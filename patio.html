@@ -42,12 +42,14 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         import { LumaSplatsThree } from '@lumaai/luma-web';
+        import { Color, FogExp2 } from "three";
 
         let renderer = new WebGLRenderer({ antialias: false });
 
         renderer.domElement.style.position = 'absolute';
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
+        renderer.setPixelRatio(1);
 
         // add canvas to DOM
         document.body.appendChild(renderer.domElement);
@@ -64,14 +66,14 @@
 
 
         let scene = new Scene();
+        // scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.02);
+        // scene.background = scene.fog.color;
 
         let splat = new LumaSplatsThree({
             source: 'https://lumalabs.ai/capture/246aa471-99f3-40e4-802f-c671da03df73'
         });
         scene.add(splat);
 
-        // Model Position Correction
-        // splat.position.x = 2;
         splat.position.y = -1;
         splat.rotation.z = 0.1;
 
@@ -94,7 +96,6 @@
             }
 
             controls.update();
-
             renderer.render(scene, camera);
         }
 
