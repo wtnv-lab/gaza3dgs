@@ -102,9 +102,9 @@
         renderer.setAnimationLoop(frameLoop);
         function animate() {
             requestAnimationFrame(animate);
-            frame++;
-            if (frame % 2 == 0) {
-                return;
+            var is_update = false;
+            if (is_update) {
+                render();
             }
         }
         animate();
