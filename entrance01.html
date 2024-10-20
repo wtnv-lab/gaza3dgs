@@ -38,10 +38,9 @@
 	</script>
     <script type="module">
         import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
-        // orbit controls
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
         import { LumaSplatsThree } from '@lumaai/luma-web';
+        import { Color, FogExp2 } from "three";
 
         let renderer = new WebGLRenderer({ antialias: false });
 
@@ -63,8 +62,10 @@
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-
         let scene = new Scene();
+        scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.02);
+        scene.background = scene.fog.color;
+
 
         let splat = new LumaSplatsThree({
             source: 'https://lumalabs.ai/capture/31a1fe92-ad40-4b44-9777-487932d1ce48'
