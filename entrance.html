@@ -3,7 +3,20 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Al Shifa Hospital Babies</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta property="og:image" content="https://hiroshima.archiving.jp/data/screen.jpg" />
+    <meta property="og:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hwtnv" />
+    <meta name="twitter:creator" content="@hwtnv" />
+    <meta name="twitter:title" content="ヒロシマ・アーカイブ" />
+    <meta name="twitter:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:image" content="https://hiroshima.archiving.jp/data/screen.jpg" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>Al Shifa Hospital Entrance | UTokyo & Al Jazeera</title>
     <style>
         body {
             margin: 0;
@@ -39,7 +52,9 @@
         // add canvas to DOM
         document.body.appendChild(renderer.domElement);
 
-        let camera = new PerspectiveCamera(50, -1, 0.1, 20);
+        let camera = new PerspectiveCamera(75, -1, 0.1, 20);
+
+        // カメラ位置補正
         camera.position.x = 3;
         camera.position.y = 1;
         camera.position.z = -1;
@@ -55,8 +70,10 @@
         });
         scene.add(splat);
 
+        // モデル位置補正
         splat.position.x = 2;
         splat.position.y = -1;
+        splat.rotation.z = -0.1;
 
         // const tick = () => {
         //     splat.rotation.y += 0.002;
@@ -66,17 +83,6 @@
         // tick();
 
         function frameLoop() {
-
-            renderer.setAnimationLoop(frameLoop);
-            function animate() {
-                requestAnimationFrame(animate);
-                frame++;
-                if (frame % 2 == 0) {
-                    return;
-                }
-            }
-            animate();
-
             let canvas = renderer.domElement;
             let width = canvas.clientWidth;
             let height = canvas.clientHeight;
@@ -91,6 +97,16 @@
 
             renderer.render(scene, camera);
         }
+
+        renderer.setAnimationLoop(frameLoop);
+        function animate() {
+            requestAnimationFrame(animate);
+            frame++;
+            if (frame % 2 == 0) {
+                return;
+            }
+        }
+        animate();
 
     </script>
 </body>
