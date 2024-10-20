@@ -66,6 +66,17 @@
         // tick();
 
         function frameLoop() {
+
+            renderer.setAnimationLoop(frameLoop);
+            function animate() {
+                requestAnimationFrame(animate);
+                frame++;
+                if (frame % 2 == 0) {
+                    return;
+                }
+            }
+            animate();
+
             let canvas = renderer.domElement;
             let width = canvas.clientWidth;
             let height = canvas.clientHeight;
@@ -81,19 +92,6 @@
             renderer.render(scene, camera);
         }
 
-        renderer.setAnimationLoop(frameLoop);
-        function animate() {
-            requestAnimationFrame(animate);
-
-            /* フレーム数をカウント */
-            frame++;
-
-            /* 偶数フレームをスキップ */
-            if (frame % 2 == 0) {
-                return;
-            }
-        }
-        animate();
     </script>
 </body>
 
