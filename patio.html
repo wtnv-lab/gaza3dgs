@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta property="og:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/patio.jpg" />
+    <meta property="og:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hwtnv" />
+    <meta name="twitter:creator" content="@hwtnv" />
+    <meta name="twitter:title" content="Al Shifa Hospital Patio | UTokyo & Al Jazeera" />
+    <meta name="twitter:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/patio.jpg" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>Al Shifa Hospital Patio | UTokyo & Al Jazeera</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="importmap">
+	{
+		"imports": {
+			"three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+			"three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
+			"@lumaai/luma-web": "https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js"
+		}
+	}
+	</script>
+    <script type="module">
+        import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
+        // orbit controls
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        import { LumaSplatsThree } from '@lumaai/luma-web';
+
+        let renderer = new WebGLRenderer({ antialias: false });
+
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+
+        // add canvas to DOM
+        document.body.appendChild(renderer.domElement);
+
+        let camera = new PerspectiveCamera(70, -1, 0.1, 100);
+
+        // Camera Position Correction
+        camera.position.x = 0.5;
+        camera.position.y = 0;
+        camera.position.z = 3;
+
+        let controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+
+        let scene = new Scene();
+
+        let splat = new LumaSplatsThree({
+            source: 'https://lumalabs.ai/capture/246aa471-99f3-40e4-802f-c671da03df73'
+        });
+        scene.add(splat);
+
+        // Model Position Correction
+        // splat.position.x = 2;
+        splat.position.y = -1;
+        splat.rotation.z = 0.1;
+
+        // const tick = () => {
+        //     splat.rotation.y += 0.002;
+        //     renderer.render(scene, camera);
+        //     requestAnimationFrame(tick);
+        // }
+        // tick();
+
+        function frameLoop() {
+            let canvas = renderer.domElement;
+            let width = canvas.clientWidth;
+            let height = canvas.clientHeight;
+
+            if (canvas.width !== width || canvas.height !== height) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height, false);
+            }
+
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        renderer.setAnimationLoop(frameLoop);
+        function animate() {
+            requestAnimationFrame(animate);
+            frame++;
+            if (frame % 2 == 0) {
+                return;
+            }
+        }
+        animate();
+
+    </script>
+</body>
+
+</html>
