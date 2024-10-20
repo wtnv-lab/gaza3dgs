@@ -76,13 +76,6 @@
         splat.position.y = -1;
         splat.rotation.z = -0.1;
 
-        // const tick = () => {
-        //     splat.rotation.y += 0.002;
-        //     renderer.render(scene, camera);
-        //     requestAnimationFrame(tick);
-        // }
-        // tick();
-
         function frameLoop() {
             let canvas = renderer.domElement;
             let width = canvas.clientWidth;
@@ -94,18 +87,27 @@
                 renderer.setSize(width, height, false);
             }
             controls.update();
-            renderer.render(scene, camera);
+            animate();
         }
         renderer.setAnimationLoop(frameLoop);
 
+        // FPS Max value
+        const maxFPS = 60;
+        let lastUpdateTime = performance.now();
+
         function animate() {
             requestAnimationFrame(animate);
-            var is_update = false;
-            if (is_update) {
-                render();
+            const now = performance.now();
+            const deltaTime = now - lastUpdateTime;
+
+            if (deltaTime < 1000 / maxFPS) {
+                return;
             }
+
+            lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
+            renderer.render(scene, camera);
         }
-        animate();
+
 
     </script>
 </body>
