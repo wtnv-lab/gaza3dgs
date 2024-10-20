@@ -93,13 +93,11 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(width, height, false);
             }
-
             controls.update();
-
             renderer.render(scene, camera);
         }
-
         renderer.setAnimationLoop(frameLoop);
+
         function animate() {
             requestAnimationFrame(animate);
             var is_update = false;
