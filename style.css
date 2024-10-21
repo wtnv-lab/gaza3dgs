@@ -3,3 +3,15 @@ body {
     padding: 0;
     overflow: hidden;
 }
+
+.credit {
+    position: absolute;
+    padding: 2px;
+    color: #cccccc;
+    font-family: "Arial";
+    background-color: rgba(0, 0, 0, 0.6);
+    bottom: 0px;
+    left: 0px;
+    z-index: 100;
+    font-size: 15px;
+}
