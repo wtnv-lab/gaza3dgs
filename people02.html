@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta property="og:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/people02.jpg" />
+    <meta property="og:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hwtnv" />
+    <meta name="twitter:creator" content="@hwtnv" />
+    <meta name="twitter:title" content="Al Shifa Hospital People 02 | UTokyo & Al Jazeera" />
+    <meta name="twitter:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+    <meta name="twitter:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/people02.jpg" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>Al Shifa Hospital People 02 | UTokyo & Al Jazeera</title>
+    <link rel="stylesheet" type="text/css" media="all" href="style.css" />
+</head>
+
+<body>
+    <script type="importmap">
+	{
+		"imports": {
+			"three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+			"three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
+			"@lumaai/luma-web": "https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js"
+		}
+	}
+	</script>
+    <script type="module">
+        import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { LumaSplatsThree } from '@lumaai/luma-web';
+        import { Color, FogExp2 } from "three";
+
+        let renderer = new WebGLRenderer({ antialias: false });
+
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        renderer.setPixelRatio(1);
+
+        // add canvas to DOM
+        document.body.appendChild(renderer.domElement);
+
+        let camera = new PerspectiveCamera(40, -1, 0.1, 50);
+
+        // Camera Position Correction
+        camera.position.x = - 0.75;
+        camera.position.y = 1.0;
+        camera.position.z = 3.5;
+
+        let controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxDistance = 7.0;
+        controls.maxPolarAngle = Math.PI * 0.5;
+
+        let scene = new Scene();
+        // scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.05);
+        // scene.background = scene.fog.color;
+
+
+        let splat = new LumaSplatsThree({
+            source: 'https://lumalabs.ai/capture/e58bf521-454c-450c-a1bf-d9c174a4ed66'
+        });
+        scene.add(splat);
+
+        // Model Position Correction
+        splat.position.x = - 1.775;
+        splat.position.z = 4.25;
+        splat.rotation.x = 0;
+        splat.rotation.y = 180;
+        splat.rotation.z = 0.22;
+
+        function frameLoop() {
+            let canvas = renderer.domElement;
+            let width = canvas.clientWidth;
+            let height = canvas.clientHeight;
+
+            if (canvas.width !== width || canvas.height !== height) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height, false);
+            }
+            controls.update();
+            animate();
+        }
+        renderer.setAnimationLoop(frameLoop);
+
+        // FPS Max value
+        const maxFPS = 60;
+        let lastUpdateTime = performance.now();
+
+        function animate() {
+            //requestAnimationFrame(animate);
+            const now = performance.now();
+            const deltaTime = now - lastUpdateTime;
+
+            if (deltaTime < 1000 / maxFPS) {
+                return;
+            }
+
+            lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
+            renderer.render(scene, camera);
+        }
+    </script>
+    <div id="credit">© UTokyo & Al Jazeera</div>
+</body>
+
+</html>
