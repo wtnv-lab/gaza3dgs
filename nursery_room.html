@@ -53,10 +53,12 @@
 
 		let controls = new OrbitControls(camera, renderer.domElement);
 		controls.enableDamping = true;
+		controls.maxDistance = 7.0;
+		controls.maxPolarAngle = Math.PI * 0.5;
 
 		let scene = new Scene();
-		// scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.001);
-		// scene.background = scene.fog.color;
+		scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.001);
+		scene.background = scene.fog.color;
 
 		let splat = new LumaSplatsThree({
 			source: 'https://lumalabs.ai/capture/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0'

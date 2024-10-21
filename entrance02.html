@@ -55,6 +55,8 @@
 
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
+        controls.maxDistance = 7.0;
+        controls.maxPolarAngle = Math.PI * 0.5;
 
         let scene = new Scene();
         scene.fog = new FogExp2(new Color(0x000000).convertLinearToSRGB(), 0.05);
