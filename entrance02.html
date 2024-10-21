@@ -16,7 +16,7 @@
     <meta name="twitter:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/entrance.jpg" />
     <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-    <title>Al Shifa Hospital Entrance 01 | UTokyo & Al Jazeera</title>
+    <title>Al Shifa Hospital Entrance 02 | UTokyo & Al Jazeera</title>
     <style>
         body {
             margin: 0;
@@ -52,12 +52,12 @@
         // add canvas to DOM
         document.body.appendChild(renderer.domElement);
 
-        let camera = new PerspectiveCamera(75, -1, 0.1, 50);
+        let camera = new PerspectiveCamera(70, -1, 0.1, 50);
 
         // Camera Position Correction
-        camera.position.x = 3;
+        camera.position.x = 2;
         camera.position.y = 0.5;
-        camera.position.z = -1;
+        camera.position.z = 1;
 
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -68,14 +68,14 @@
 
 
         let splat = new LumaSplatsThree({
-            source: 'https://lumalabs.ai/capture/31a1fe92-ad40-4b44-9777-487932d1ce48'
+            source: 'https://lumalabs.ai/capture/516c1cf7-1d12-490f-93d7-980c1108b965'
         });
         scene.add(splat);
 
         // Model Position Correction
-        splat.position.x = 2;
-        splat.position.y = -1;
-        splat.rotation.z = -0.1;
+        splat.rotation.x = -0.025;
+        splat.rotation.y = 0;
+        splat.rotation.z = -0.05;
 
         function frameLoop() {
             let canvas = renderer.domElement;
