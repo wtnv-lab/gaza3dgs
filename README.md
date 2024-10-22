@@ -1,0 +1,1 @@
+The 3D Gaussian splatting were generated using LumaAI based on the video footages by Al Jazeera. In addition, web apps were created using the Luma WebGL Library and Three.js.
