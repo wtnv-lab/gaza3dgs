@@ -76,9 +76,9 @@
 
     const fileName = 'babies01';
 
-    let path = 'assets/splat/' + fileName + '.ksplat';
+    let path = 'assets/splat/' + fileName + '.splat';
     let splat = viewer.addSplatScene(path, {
-      // 'progressiveLoad': true,
+      'progressiveLoad': true,
       'showLoadingUI': false,
     })
       .then(() => {

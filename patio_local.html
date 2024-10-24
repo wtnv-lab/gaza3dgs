@@ -76,9 +76,9 @@
 
     const fileName = 'patio';
 
-    let path = 'assets/splat/' + fileName + '.ksplat';
+    let path = 'assets/splat/' + fileName + '.splat';
     let splat = viewer.addSplatScene(path, {
-
+      'progressiveLoad': true,
       'showLoadingUI': false,
       'rotation': [0, 0, 0.05, 1],
     })
