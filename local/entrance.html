@@ -110,7 +110,7 @@
       lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
       viewer.update();
       viewer.render();
-      renderer.setAnimationLoop(frameLoop);
+      controls.update();
     }
 
   </script>
