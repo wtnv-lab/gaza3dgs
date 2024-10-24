@@ -31,6 +31,7 @@
     import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
     import * as THREE from 'three';
     import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const urlParams = new URLSearchParams(window.location.search);
     const mode = parseInt(urlParams.get('mode')) || 0;
@@ -51,13 +52,20 @@
     renderer.setSize(renderWidth, renderHeight);
     rootElement.appendChild(renderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(80, renderWidth / renderHeight, 0.1, 50);
-    camera.position.copy(new THREE.Vector3().fromArray([11, -1.2, 1.5]));
+    const camera = new THREE.PerspectiveCamera(75, renderWidth / renderHeight, 0.1, 30);
+    camera.position.copy(new THREE.Vector3().fromArray([12, -1.5, 1.5]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
+    camera.lookAt(new THREE.Vector3().fromArray([0, 4, -0]));
+
+    let controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxDistance = 20.0;
+    controls.maxPolarAngle = Math.PI * 0.5;
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
+      'initialCameraLookAt': [7, -1.5, 2.0],
       'sphericalHarmonicsDegree': 0
     });
 
@@ -66,7 +74,7 @@
     let path = 'assets/splat/' + fileName + '.splat';
     let splat = viewer.addSplatScene(path, {
       'progressiveLoad': true,
-      'showLoadingUI': false
+      'showLoadingUI': false,
     })
       .then(() => {
         requestAnimationFrame(animate);
@@ -75,6 +83,20 @@
     // FPS Max value
     const maxFPS = 60;
     let lastUpdateTime = performance.now();
+
+    function frameLoop() {
+      let canvas = renderer.domElement;
+      let width = canvas.clientWidth;
+      let height = canvas.clientHeight;
+
+      if (canvas.width !== width || canvas.height !== height) {
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+      }
+      controls.update();
+      animate();
+    }
 
     function animate() {
       requestAnimationFrame(animate);
@@ -88,6 +110,7 @@
       lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
       viewer.update();
       viewer.render();
+      renderer.setAnimationLoop(frameLoop);
     }
 
   </script>
