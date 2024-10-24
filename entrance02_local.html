@@ -63,14 +63,14 @@
     rootElement.appendChild(renderer.domElement);
 
     const camera = new THREE.PerspectiveCamera(60, renderWidth / renderHeight, 0.1, 30);
-    camera.position.copy(new THREE.Vector3().fromArray([1.5, -1.5, -1.5]));
+    camera.position.copy(new THREE.Vector3().fromArray([1.5, -1.0, -0.75]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
     camera.lookAt(new THREE.Vector3().fromArray([0, 4, -0]));
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
-      'initialCameraLookAt': [0, -1, 0],
+      'initialCameraLookAt': [0, -0.75, 0],
       'sphericalHarmonicsDegree': 255
     });
 
