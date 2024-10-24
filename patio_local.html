@@ -62,7 +62,7 @@
     renderer.setSize(renderWidth, renderHeight);
     rootElement.appendChild(renderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(75, renderWidth / renderHeight, 0.1, 50);
+    const camera = new THREE.PerspectiveCamera(75, renderWidth / renderHeight, 0.1, 80);
     camera.position.copy(new THREE.Vector3().fromArray([1, -0.5, 3.5]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
     camera.lookAt(new THREE.Vector3().fromArray([0, 4, -0]));
@@ -78,7 +78,7 @@
 
     let path = 'assets/splat/' + fileName + '.ksplat';
     let splat = viewer.addSplatScene(path, {
-      'progressiveLoad': true,
+
       'showLoadingUI': false,
       'rotation': [0, 0, 0.05, 1],
     })
