@@ -44,7 +44,6 @@
     import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
     import * as THREE from 'three';
     import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const urlParams = new URLSearchParams(window.location.search);
     const mode = parseInt(urlParams.get('mode')) || 0;
@@ -68,16 +67,11 @@
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
     camera.lookAt(new THREE.Vector3().fromArray([0, 4, -0]));
 
-    let controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.maxDistance = 20.0;
-    controls.maxPolarAngle = Math.PI * 0.5;
-
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
       'initialCameraLookAt': [7, -1.5, 2.0],
-      'sphericalHarmonicsDegree': 0
+      'sphericalHarmonicsDegree': 1
     });
 
     const fileName = 'entrance01';
@@ -105,7 +99,6 @@
         camera.updateProjectionMatrix();
         renderer.setSize(width, height, false);
       }
-      controls.update();
       animate();
     }
 
@@ -121,7 +114,6 @@
       lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
       viewer.update();
       viewer.render();
-      controls.update();
     }
 
   </script>
