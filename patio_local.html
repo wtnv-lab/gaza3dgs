@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+  <meta property="og:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/patio.jpg" />
+  <meta property="og:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@hwtnv" />
+  <meta name="twitter:creator" content="@hwtnv" />
+  <meta name="twitter:title" content="Al Shifa Hospital Patio | UTokyo & Al Jazeera" />
+  <meta name="twitter:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+  <meta name="twitter:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/patio.jpg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <title>Al Shifa Hospital Patio | UTokyo & Al Jazeera</title>
+  <link rel="stylesheet" type="text/css" media="all" href="style.css" />
+</head>
+<script type="text/javascript" src="js/util.js"></script>
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
+            "@mkkellogg/gaussian-splats-3d": "./lib/gaussian-splats-3d.module.js"
+        }
+    }
+  </script>
+<style>
+  body {
+    background-color: #000000;
+    height: 100vh;
+    margin: 0px;
+  }
+</style>
+
+</head>
+
+<body>
+  <script type="module">
+    import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+    import * as THREE from 'three';
+    import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = parseInt(urlParams.get('mode')) || 0;
+
+    const renderWidth = window.innerWidth;
+    const renderHeight = window.innerHeight;
+
+    const rootElement = document.createElement('div');
+    rootElement.style.width = renderWidth + 'px';
+    rootElement.style.height = renderHeight + 'px';
+    document.body.appendChild(rootElement);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+    renderer.setSize(renderWidth, renderHeight);
+    rootElement.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(75, renderWidth / renderHeight, 0.1, 50);
+    camera.position.copy(new THREE.Vector3().fromArray([1, -0.5, 3.5]));
+    camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
+    camera.lookAt(new THREE.Vector3().fromArray([0, 4, -0]));
+
+    const viewer = new GaussianSplats3D.Viewer({
+      'renderer': renderer,
+      'camera': camera,
+      'initialCameraLookAt': [0, -0.5, 0],
+      'sphericalHarmonicsDegree': 255
+    });
+
+    const fileName = 'patio';
+
+    let path = 'assets/splat/' + fileName + '.splat';
+    let splat = viewer.addSplatScene(path, {
+      'progressiveLoad': true,
+      'showLoadingUI': false,
+      'rotation': [0, 0, 0.05, 1],
+    })
+      .then(() => {
+        requestAnimationFrame(animate);
+      });
+
+    // FPS Max value
+    const maxFPS = 60;
+    let lastUpdateTime = performance.now();
+
+    function frameLoop() {
+      let canvas = renderer.domElement;
+      let width = canvas.clientWidth;
+      let height = canvas.clientHeight;
+
+      if (canvas.width !== width || canvas.height !== height) {
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+      }
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const deltaTime = now - lastUpdateTime;
+
+      if (deltaTime < 1000 / maxFPS) {
+        return;
+      }
+
+      lastUpdateTime = now - (deltaTime % (1000 / maxFPS));
+      viewer.update();
+      viewer.render();
+    }
+
+  </script>
+  <div id="credit">© UTokyo & Al Jazeera</div>
+</body>
+
+</html>
