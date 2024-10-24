@@ -52,7 +52,7 @@
     rootElement.appendChild(renderer.domElement);
 
     const camera = new THREE.PerspectiveCamera(80, renderWidth / renderHeight, 0.1, 50);
-    camera.position.copy(new THREE.Vector3().fromArray([11, -1.5, 1.5]));
+    camera.position.copy(new THREE.Vector3().fromArray([11, -1.2, 1.5]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
 
     const viewer = new GaussianSplats3D.Viewer({
