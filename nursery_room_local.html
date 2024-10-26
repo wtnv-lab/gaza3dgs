@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -47,6 +46,8 @@
     // FPS Max value
     const maxFPS = 60;
 
+    // Initialize
+
     import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
     import * as THREE from 'three';
     import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
@@ -68,10 +69,14 @@
     renderer.setSize(renderWidth, renderHeight);
     rootElement.appendChild(renderer.domElement);
 
+    // Camera
+
     const camera = new THREE.PerspectiveCamera(50, renderWidth / renderHeight, 0.1, 30);
     camera.position.copy(new THREE.Vector3().fromArray([3, -2, -2.3]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
     camera.lookAt(new THREE.Vector3().fromArray([0, 0, -0]));
+
+    // Viewer
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
@@ -79,6 +84,8 @@
       'initialCameraLookAt': [0, -1.5, 0.5],
       'sphericalHarmonicsDegree': 255
     });
+
+    // Load .splat file<!DOCTYPE html>
 
     let path = 'assets/splat/' + fileName + '.splat';
     let splat = viewer.addSplatScene(path, {
@@ -88,6 +95,8 @@
       .then(() => {
         requestAnimationFrame(animate);
       });
+
+    // Frame rate limitter
 
     let lastUpdateTime = performance.now();
 
