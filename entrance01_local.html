@@ -41,6 +41,12 @@
 
 <body>
   <script type="module">
+
+    // splat file name 
+    const fileName = 'entrance01';
+    // FPS Max value
+    const maxFPS = 60;
+
     import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
     import * as THREE from 'three';
     import { WebGLRenderer, PerspectiveCamera, Scene } from 'three';
@@ -74,8 +80,6 @@
       'sphericalHarmonicsDegree': 255
     });
 
-    const fileName = 'entrance01';
-
     let path = 'assets/splat/' + fileName + '.splat';
     let splat = viewer.addSplatScene(path, {
       'progressiveLoad': true,
@@ -85,8 +89,6 @@
         requestAnimationFrame(animate);
       });
 
-    // FPS Max value
-    const maxFPS = 60;
     let lastUpdateTime = performance.now();
 
     function frameLoop() {
