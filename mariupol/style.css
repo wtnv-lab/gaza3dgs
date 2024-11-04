@@ -5,6 +5,10 @@ body {
     background-color: black;
 }
 
+a {
+    color: #cccccc;
+}
+
 #credit {
     position: absolute;
     padding: 2px;
