@@ -26,6 +26,11 @@ body {
     border: 0;
 }
 
+a:link {
+    text-decoration: underline;
+    color: #cccccc;
+}
+
 a:visited {
     text-decoration: underline;
     color: #cccccc;
