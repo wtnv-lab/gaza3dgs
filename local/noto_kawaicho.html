@@ -5,18 +5,18 @@
   <meta charset="UTF-8">
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
-  <meta name="description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
-  <meta property="og:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/babies02.jpg" />
-  <meta property="og:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
+  <meta name="description" content="2024年6月27日，輪島市河合町。能登半島地震発災から約半年後の状況。撮影：石川県，3Dデータ作成：東京大学大学院 渡邉英徳研究室" />
+  <meta property="og:image" content="https://noto.archiving.jp/sns/noto_kawaicho.jpg" />
+  <meta property="og:description" content="2024年6月27日，輪島市河合町。能登半島地震発災から約半年後の状況。撮影：石川県，3Dデータ作成：東京大学大学院 渡邉英徳研究室" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@hwtnv" />
   <meta name="twitter:creator" content="@hwtnv" />
-  <meta name="twitter:title" content="Al Shifa Hospital Babies 02 | UTokyo & Al Jazeera" />
-  <meta name="twitter:description" content="UTokyo Creates 3D Gaussian Splatting App Based on Al Jazeera Footage" />
-  <meta name="twitter:image" content="https://wtnv-lab.github.io/gaza3dgs/sns/babies02.jpg" />
+  <meta name="twitter:title" content="輪島市河合町 2024年6月27日" />
+  <meta name="twitter:description" content="2024年6月27日，輪島市河合町。能登半島地震発災から約半年後の状況。撮影：石川県，3Dデータ作成：東京大学大学院 渡邉英徳研究室" />
+  <meta name="twitter:image" content="https://noto.archiving.jp/sns/noto_kawaicho.jpg" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-  <title>Al Shifa Hospital Babies 02 | UTokyo & Al Jazeera</title>
+  <title>輪島市河合町 2024年6月27日</title>
   <link rel="stylesheet" type="text/css" media="all" href="style.css" />
   <script type="text/javascript" src="js/util.js"></script>
   <script type="importmap">
@@ -64,16 +64,16 @@
     // Camera
 
     const camera = new THREE.PerspectiveCamera(50, renderWidth / renderHeight, 0.1, 10000);
-    camera.position.copy(new THREE.Vector3().fromArray([-6.57116, -1.32397, -6.23528]));
+    camera.position.copy(new THREE.Vector3().fromArray([0.86795, -0.93693, -1.93713]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
-    camera.lookAt(new THREE.Vector3().fromArray([-3.37278, 1.45039, -10.39697]));
+    camera.lookAt(new THREE.Vector3().fromArray([-0.62299, 0.49702, 0.02795]));
 
     // Viewer
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
-      'initialCameraLookAt': [-3.37278, 1.45039, -10.39697],
+      'initialCameraLookAt': [-0.62299, 0.49702, 0.02795],
       'sphericalHarmonicsDegree': 2,
       'selfDrivenMode': false
     });
@@ -137,7 +137,7 @@
     }
 
   </script>
-  <div id="credit">© UTokyo & Al Jazeera</div>
+  <div id="credit">© UTokyo & Ishikawa Prefecture</div>
 </body>
 
 </html>
