@@ -64,17 +64,17 @@
 
     // Camera
 
-    const camera = new THREE.PerspectiveCamera(60, renderWidth / renderHeight, 0.1, 10000);
-    camera.position.copy(new THREE.Vector3().fromArray([-37.79142, -8.27267, -157.27241]));
+    const camera = new THREE.PerspectiveCamera(50, renderWidth / renderHeight, 0.1, 10000);
+    camera.position.copy(new THREE.Vector3().fromArray([-50.96788, -3.36088, -160.76918]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
-    camera.lookAt(new THREE.Vector3().fromArray([-47.82482, 9.55628, -134.97951]));
+    camera.lookAt(new THREE.Vector3().fromArray([-51.88798, 8.61482, -137.30362]));
 
     // Viewer
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
-      'initialCameraLookAt': [-47.82482, 9.55628, -134.97951],
+      'initialCameraLookAt': [-51.88798, 8.61482, -137.30362],
       'sphericalHarmonicsDegree': 2,
       'selfDrivenMode': false
     });
