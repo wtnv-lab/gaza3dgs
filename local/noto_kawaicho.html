@@ -35,7 +35,7 @@
   <script type="module">
 
     // splat file name 
-    const fileName = 'noto_kawaicho';
+    const fileName = 'noto_kawaicho_hd';
     // FPS Max value
     const maxFPS = 60;
 
@@ -65,16 +65,16 @@
     // Camera
 
     const camera = new THREE.PerspectiveCamera(50, renderWidth / renderHeight, 0.1, 10000);
-    camera.position.copy(new THREE.Vector3().fromArray([-1.07453, -1.06669, 2.20217]));
+    camera.position.copy(new THREE.Vector3().fromArray([-1.55727, -4.36002, 0.72008]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
-    camera.lookAt(new THREE.Vector3().fromArray([0.86974, 0.84876, -0.71075]));
+    camera.lookAt(new THREE.Vector3().fromArray([0.97322, -2.98651, 1.74629]));
 
     // Viewer
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
-      'initialCameraLookAt': [0.86974, 0.84876, -0.71075],
+      'initialCameraLookAt': [0.97322, -2.98651, 1.74629],
       'sphericalHarmonicsDegree': 2,
       'selfDrivenMode': false
     });
