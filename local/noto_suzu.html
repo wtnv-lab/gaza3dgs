@@ -35,7 +35,7 @@
   <script type="module">
 
     // splat file name 
-    const fileName = 'noto_suzu';
+    const fileName = 'noto_suzu_hd';
     // FPS Max value
     const maxFPS = 60;
 
@@ -65,16 +65,16 @@
     // Camera
 
     const camera = new THREE.PerspectiveCamera(50, renderWidth / renderHeight, 0.1, 10000);
-    camera.position.copy(new THREE.Vector3().fromArray([-50.96788, -3.36088, -160.76918]));
+    camera.position.copy(new THREE.Vector3().fromArray([-1.55778, -1.55540, 5.12007]));
     camera.up = new THREE.Vector3().fromArray([0, -1, -0]).normalize();
-    camera.lookAt(new THREE.Vector3().fromArray([-51.88798, 8.61482, -137.30362]));
+    camera.lookAt(new THREE.Vector3().fromArray([-0.66588, -0.53197, 3.15000]));
 
     // Viewer
 
     const viewer = new GaussianSplats3D.Viewer({
       'renderer': renderer,
       'camera': camera,
-      'initialCameraLookAt': [-51.88798, 8.61482, -137.30362],
+      'initialCameraLookAt': [-0.66588, -0.53197, 3.15000],
       'sphericalHarmonicsDegree': 2,
       'selfDrivenMode': false
     });
