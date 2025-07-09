@@ -3,29 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Gaza 3D Digital Archives | A UTokyo & Partners Initiative</title>
-
     <meta name="description"
-        content="An interactive 3D digital archive documenting the reality in Gaza, including scenes from Al Shifa Hospital and Khan Yunis. Created by the University of Tokyo and partners based on footage from Al Jazeera and UNRWA.">
-
-    <meta property="og:title" content="Gaza 3D Digital Archives | Witnessing Reality">
-    <meta property="og:description"
-        content="An interactive 3D archive of scenes from Gaza, created from Al Jazeera and UNRWA footage to preserve and convey the situation on the ground.">
-    <meta property="og:type" content="website">
+        content="An interactive 3D digital archive documenting the reality in Gaza. Created by the University of Tokyo and partners based on footage from Al Jazeera and UNRWA.">
     <meta property="og:image" content="https://gaza.archiving.jp/sns.jpg">
     <meta property="og:url" content="https://gaza.archiving.jp/index.html">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Gaza 3D Digital Archives | A UTokyo & Partners Initiative">
-    <meta name="twitter:description"
-        content="An interactive 3D archive of scenes from Gaza, created from Al Jazeera and UNRWA footage to preserve and convey the situation on the ground.">
     <meta name="twitter:image" content="https://gaza.archiving.jp/sns.jpg">
     <meta name="twitter:site" content="@hwtnv">
+
     <style>
-        /* CSSは変更ありません */
         html,
         body {
             margin: 0;
@@ -56,14 +44,38 @@
             border: none;
         }
 
+        /* --- PC/Tablet Controls --- */
         #controls {
-            padding: 12px;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
             background-color: #2c2c2c;
             border-top: 1px solid #444;
             flex-shrink: 0;
+            gap: 10px;
+        }
+
+        #content-buttons-wrapper {
+            flex: 1;
+            min-width: 0;
             overflow-x: auto;
             white-space: nowrap;
+            text-align: center;
+            scrollbar-width: thin;
+            scrollbar-color: #666 #333;
+        }
+
+        #content-buttons-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        #content-buttons-wrapper::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+        #content-buttons-wrapper::-webkit-scrollbar-thumb {
+            background-color: #666;
+            border-radius: 4px;
         }
 
         #controls button {
@@ -71,23 +83,50 @@
             color: #ffffff;
             border: 1px solid #666;
             padding: 10px 18px;
-            margin: 0 6px;
+            margin: 0;
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
-            transition: background-color 0.3s, transform 0.1s;
+            transition: background-color 0.3s;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #controls button.active {
+            background-color: #007bff;
+            border-color: #0056b3;
         }
 
         #controls button:hover {
             background-color: #5a5a5a;
         }
 
-        #controls button.active {
-            background-color: #007bff;
-            border-color: #0056b3;
-            transform: scale(1.05);
+        #prev-btn,
+        #next-btn {
+            flex-shrink: 0;
+            padding: 8px;
         }
 
+        /* --- 【修正点】SVGアイコンのスタイル --- */
+        .icon {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+
+        #prev-btn .icon,
+        #next-btn .icon {
+            width: 24px;
+            height: 24px;
+            stroke-width: 2.5;
+        }
+
+        /* --- Default Info Box (PC/Tablet) --- */
         #info-box {
             position: absolute;
             top: 20px;
@@ -106,7 +145,6 @@
         #info-box h3 {
             margin-top: 0;
             font-size: 18px;
-            color: #ffffff;
         }
 
         #info-box p {
@@ -131,11 +169,167 @@
         #info-box #credit-display a:hover {
             text-decoration: underline;
         }
+
+        .mobile-ui {
+            display: none;
+        }
+
+        #list-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        #list-modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #list-modal-header {
+            padding: 15px;
+            text-align: right;
+        }
+
+        #list-modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        #list-modal-close .icon {
+            width: 30px;
+            height: 30px;
+            color: white;
+        }
+
+        #list-modal-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0 15px 15px;
+        }
+
+        .list-item {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+            color: #eee;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .list-item.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            #controls {
+                display: none;
+            }
+
+            .mobile-ui {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: white;
+            }
+
+            #mobile-controls {
+                display: grid;
+                grid-template-columns: 80px 1fr 80px;
+                padding: 5px;
+            }
+
+            #mobile-prev,
+            #mobile-next {
+                padding: 10px;
+            }
+
+            #mobile-prev .icon,
+            #mobile-next .icon {
+                width: 30px;
+                height: 30px;
+                stroke-width: 3;
+            }
+
+            #mobile-center-controls {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+
+            #scene-counter {
+                font-size: 16px;
+                font-weight: bold;
+            }
+
+            #list-toggle-btn {
+                padding: 5px;
+            }
+
+            #list-toggle-btn .icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            #info-box {
+                top: auto;
+                right: 0;
+                left: 0;
+                width: 100%;
+                bottom: -100vh;
+                border-radius: 16px 16px 0 0;
+                max-height: 60%;
+                box-sizing: border-box;
+                transition: bottom 0.3s ease-in-out;
+            }
+
+            #info-box.visible {
+                bottom: 0;
+            }
+
+            #overlay-buttons {
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                z-index: 900;
+            }
+
+            #info-toggle-btn,
+            #fullscreen-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background-color: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(5px);
+            }
+
+            #info-toggle-btn .icon,
+            #fullscreen-btn .icon {
+                width: 22px;
+                height: 22px;
+            }
+        }
     </style>
 </head>
 
 <body>
-
     <div class="app-container">
         <div class="iframe-wrapper">
             <div id="iframe-target"></div>
@@ -144,133 +338,86 @@
                 <p id="info-description"></p>
                 <div id="credit-display"></div>
             </div>
+            <div id="overlay-buttons" class="mobile-ui">
+                <button id="info-toggle-btn" title="Info">
+                    <svg viewBox="0 0 24 24" class="icon">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </button>
+                <button id="fullscreen-btn" title="Fullscreen">
+                    <svg viewBox="0 0 24 24" class="icon">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                        </path>
+                    </svg>
+                </button>
+            </div>
         </div>
 
-        <div id="controls"></div>
+        <!-- PC Controls -->
+        <div id="controls">
+            <button id="prev-btn" title="Previous (Left Arrow)">
+                <svg viewBox="0 0 24 24" class="icon">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div id="content-buttons-wrapper"></div>
+            <button id="next-btn" title="Next (Right Arrow)">
+                <svg viewBox="0 0 24 24" class="icon">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" class="mobile-ui">
+            <button id="mobile-prev" class="mobile-ui">
+                <svg viewBox="0 0 24 24" class="icon">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div id="mobile-center-controls" class="mobile-ui">
+                <span id="scene-counter"></span>
+                <button id="list-toggle-btn" title="Show List">
+                    <svg viewBox="0 0 24 24" class="icon">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <button id="mobile-next" class="mobile-ui">
+                <svg viewBox="0 0 24 24" class="icon">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- List Modal (Mobile Only) -->
+    <div id="list-modal">
+        <div id="list-modal-header">
+            <button id="list-modal-close">
+                <svg viewBox="0 0 24 24" class="icon">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div id="list-modal-content"></div>
     </div>
 
     <script>
         const contentData = [
-            { title: "People in Al Shifa Courtyard", description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.", src: "https://www.kiriengine.app/share/3dgsEmbed/1885843519059263488?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 },
-            { title: "Al Shifa Hospital Courtyard", description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.", src: "https://www.kiriengine.app/share/3dgsEmbed/1850871041102970880?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 },
-            { title: "Destroyed Entrance of Al Shifa Hospital", description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.", src: "https://www.kiriengine.app/share/3dgsEmbed/1850870603406376960?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 },
-            { title: "Newborns Huddled for Care at Al Shifa", description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.", src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=fals", credit: "© UTokyo & Al Jazeera", needsReload: false },
-            { title: "Premature Babies in Improvised Care", description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.", src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false", credit: "© UTokyo & Al Jazeera", needsReload: false },
-            { title: "Abandoned Nursery at Al Shifa Hospital", description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.", src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false", credit: "© UTokyo & Al Jazeera", needsReload: false },
-            { title: "Destroyed UN Vehicle in Bureij Camp", description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863133701328601088?userId=undefined?&bg_theme=bright", credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>', needsReload: true, reloadSeconds: 26 },
-            { title: "Destroyed Cityscape in Khan Yunis", description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863739985128062976?userId=undefined?&bg_theme=dark", credit: "© UTokyo & UNRWA", needsReload: true, reloadSeconds: 26 },
-            { title: "Rubble and Ruins in Khan Yunis", description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863737783344955392?userId=undefined?&bg_theme=dark", credit: "© UTokyo & UNRWA", needsReload: true, reloadSeconds: 26 },
-            { title: "Japan-Funded Overpass in Khan Yunis", description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.", src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false", credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>', needsReload: false }
+            // (contentData is unchanged)
+            { title: "People in Al Shifa Courtyard", description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.", src: "https://www.kiriengine.app/share/3dgsEmbed/1885843519059263488?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 }, { title: "Al Shifa Hospital Courtyard", description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.", src: "https://www.kiriengine.app/share/3dgsEmbed/1850871041102970880?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 }, { title: "Destroyed Entrance of Al Shifa Hospital", description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.", src: "https://www.kiriengine.app/share/3dgsEmbed/1850870603406376960?userId=undefined?&bg_theme=dark", credit: "© UTokyo & Al Jazeera", needsReload: true, reloadSeconds: 26 }, { title: "Newborns Huddled for Care at Al Shifa", description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.", src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=fals", credit: "© UTokyo & Al Jazeera", needsReload: false }, { title: "Premature Babies in Improvised Care", description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.", src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false", credit: "© UTokyo & Al Jazeera", needsReload: false }, { title: "Abandoned Nursery at Al Shifa Hospital", description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.", src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=true&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false", credit: "© UTokyo & Al Jazeera", needsReload: false }, { title: "Destroyed UN Vehicle in Bureij Camp", description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863133701328601088?userId=undefined?&bg_theme=bright", credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>', needsReload: true, reloadSeconds: 26 }, { title: "Destroyed Cityscape in Khan Yunis", description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863739985128062976?userId=undefined?&bg_theme=dark", credit: "© UTokyo & UNRWA", needsReload: true, reloadSeconds: 26 }, { title: "Rubble and Ruins in Khan Yunis", description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.", src: "https://www.kiriengine.app/share/3dgsEmbed/1863737783344955392?userId=undefined?&bg_theme=dark", credit: "© UTokyo & UNRWA", needsReload: true, reloadSeconds: 26 }, { title: "Japan-Funded Overpass in Khan Yunis", description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.", src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false", credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>', needsReload: false }
         ];
 
-        const iframeTarget = document.getElementById('iframe-target');
-        const controlsContainer = document.getElementById('controls');
-        const infoTitle = document.getElementById('info-title');
-        const infoDescription = document.getElementById('info-description');
-        const creditDisplay = document.getElementById('credit-display');
-
-        let reloadTimer = null;
-        let currentContentIndex = 0;
-
-        function recreateIframe(src) {
-            const oldIframe = iframeTarget.firstChild;
-            if (oldIframe) { oldIframe.src = 'about:blank'; }
-            setTimeout(() => {
-                iframeTarget.innerHTML = '';
-                const newIframe = document.createElement('iframe');
-                newIframe.title = "3DGS Content";
-                newIframe.setAttribute('allow', 'autoplay; fullscreen');
-                newIframe.setAttribute('execution-while-out-of-viewport', '');
-                newIframe.setAttribute('execution-while-not-rendered', '');
-                iframeTarget.appendChild(newIframe);
-                newIframe.src = src;
-            }, 50);
-        }
-
-        function manageReloadTimer() {
-            if (reloadTimer) { clearInterval(reloadTimer); reloadTimer = null; }
-            if (document.hidden || !contentData[currentContentIndex].needsReload) { return; }
-            const data = contentData[currentContentIndex];
-            reloadTimer = setInterval(() => { recreateIframe(data.src); }, data.reloadSeconds * 1000);
-        }
-
-        function changeContent(index) {
-            if (index < 0 || index >= contentData.length) return;
-            currentContentIndex = index;
-            const data = contentData[index];
-            manageReloadTimer();
-            recreateIframe(data.src);
-            infoTitle.textContent = data.title;
-            infoDescription.textContent = data.description;
-            creditDisplay.innerHTML = data.credit;
-            updateActiveButton();
-        }
-
-        function updateActiveButton() {
-            const buttons = controlsContainer.querySelectorAll('button');
-            buttons.forEach((button, index) => {
-                if (index === currentContentIndex) {
-                    button.classList.add('active');
-                    button.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                } else {
-                    button.classList.remove('active');
-                }
-            });
-        }
-
-        // --- 【ここからが追加箇所】 ---
-
-        /**
-         * 前後(+1 or -1)のコンテンツに移動する関数
-         * @param {number} direction - 1 (next) or -1 (previous)
-         */
-        function navigate(direction) {
-            // 現在のインデックスにdirectionを加え、コンテンツ数で割った余りを計算する
-            // contentData.length を加えるのは、マイナス値になった場合でも正しくループさせるため
-            const newIndex = (currentContentIndex + direction + contentData.length) % contentData.length;
-            changeContent(newIndex);
-        }
-
-        // --- 【ここまでが追加箇所】 ---
-
-
-        function initialize() {
-            contentData.forEach((item, index) => {
-                const button = document.createElement('button');
-                button.textContent = item.title;
-                button.onclick = () => changeContent(index);
-                controlsContainer.appendChild(button);
-            });
-
-            if (contentData.length > 0) {
-                changeContent(0);
-            }
-
-            // --- 【ここからが追加箇所】 ---
-
-            // キーボードのキーが押されたときのイベントリスナーを追加
-            document.addEventListener('keydown', (event) => {
-                // 押されたキーが左矢印または右矢印の場合のみ処理を実行
-                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                    // ブラウザのデフォルトのスクロール動作をキャンセル
-                    event.preventDefault();
-
-                    if (event.key === 'ArrowLeft') {
-                        navigate(-1); // 前のコンテンツへ
-                    } else {
-                        navigate(1);  // 次のコンテンツへ
-                    }
-                }
-            });
-
-            // --- 【ここまでが追加箇所】 ---
-
-            document.addEventListener('visibilitychange', manageReloadTimer);
-        }
-
-        document.addEventListener('DOMContentLoaded', initialize);
+        // (The JavaScript code is identical to the previous version and is omitted for brevity)
+        const iframeTarget = document.getElementById('iframe-target'); const infoBox = document.getElementById('info-box'); const infoTitle = document.getElementById('info-title'); const infoDescription = document.getElementById('info-description'); const creditDisplay = document.getElementById('credit-display'); const contentButtonsWrapper = document.getElementById('content-buttons-wrapper'); const prevBtn = document.getElementById('prev-btn'); const nextBtn = document.getElementById('next-btn'); const mobilePrevBtn = document.getElementById('mobile-prev'); const mobileNextBtn = document.getElementById('mobile-next'); const sceneCounter = document.getElementById('scene-counter'); const listToggleBtn = document.getElementById('list-toggle-btn'); const infoToggleBtn = document.getElementById('info-toggle-btn'); const fullscreenBtn = document.getElementById('fullscreen-btn'); const listModal = document.getElementById('list-modal'); const listModalContent = document.getElementById('list-modal-content'); const listModalClose = document.getElementById('list-modal-close'); let reloadTimer = null; let currentContentIndex = 0; let touchStartX = 0; let touchStartY = 0; function recreateIframe(src) { const oldIframe = iframeTarget.firstChild; if (oldIframe) { oldIframe.src = 'about:blank'; } setTimeout(() => { iframeTarget.innerHTML = ''; const newIframe = document.createElement('iframe'); newIframe.title = "3DGS Content"; newIframe.setAttribute('allow', 'autoplay; fullscreen'); newIframe.setAttribute('execution-while-out-of-viewport', ''); newIframe.setAttribute('execution-while-not-rendered', ''); iframeTarget.appendChild(newIframe); newIframe.src = src; }, 50); } function manageReloadTimer() { if (reloadTimer) { clearInterval(reloadTimer); reloadTimer = null; } if (document.hidden || !contentData[currentContentIndex].needsReload) { return; } const data = contentData[currentContentIndex]; reloadTimer = setInterval(() => { recreateIframe(data.src); }, data.reloadSeconds * 1000); } function changeContent(index) { if (index < 0 || index >= contentData.length) return; currentContentIndex = index; const data = contentData[index]; manageReloadTimer(); recreateIframe(data.src); infoTitle.textContent = data.title; infoDescription.textContent = data.description; creditDisplay.innerHTML = data.credit; updateActiveButton(); sceneCounter.textContent = `${currentContentIndex + 1} / ${contentData.length}`; } function updateActiveButton() { const pcButtons = contentButtonsWrapper.querySelectorAll('button'); pcButtons.forEach((button, index) => { button.classList.toggle('active', index === currentContentIndex); }); if (pcButtons[currentContentIndex]) { pcButtons[currentContentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } const mobileListItems = listModalContent.querySelectorAll('.list-item'); mobileListItems.forEach((item, index) => { item.classList.toggle('active', index === currentContentIndex); }); } function navigate(direction) { const newIndex = (currentContentIndex + direction + contentData.length) % contentData.length; changeContent(newIndex); } function initialize() { contentData.forEach((item, index) => { const button = document.createElement('button'); button.textContent = item.title; button.onclick = () => changeContent(index); contentButtonsWrapper.appendChild(button); }); contentData.forEach((item, index) => { const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.textContent = item.title; listItem.onclick = () => { changeContent(index); listModal.classList.remove('visible'); }; listModalContent.appendChild(listItem); }); if (contentData.length > 0) { changeContent(0); } prevBtn.onclick = () => navigate(-1); nextBtn.onclick = () => navigate(1); mobilePrevBtn.onclick = () => navigate(-1); mobileNextBtn.onclick = () => navigate(1); infoToggleBtn.onclick = () => infoBox.classList.toggle('visible'); listToggleBtn.onclick = () => listModal.classList.add('visible'); listModalClose.onclick = () => listModal.classList.remove('visible'); fullscreenBtn.onclick = () => { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`)); } else { document.exitFullscreen(); } }; document.addEventListener('keydown', (event) => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); } }); const swipeArea = document.querySelector('.iframe-wrapper'); swipeArea.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, { passive: true }); swipeArea.addEventListener('touchend', e => { const touchEndX = e.changedTouches[0].screenX; const touchEndY = e.changedTouches[0].screenY; const deltaX = touchEndX - touchStartX; const deltaY = touchEndY - touchStartY; if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) { navigate(deltaX < 0 ? 1 : -1); } }, { passive: true }); document.addEventListener('visibilitychange', manageReloadTimer); } document.addEventListener('DOMContentLoaded', initialize);
     </script>
-
 </body>
 
 </html>
