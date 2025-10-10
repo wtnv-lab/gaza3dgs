@@ -65,7 +65,7 @@ function performSearch($query)
 
 // --- メインロジック
 $times = generateRandomTimes();
-file_put_contents(__DIR__ . "logs/search_schedule.log", implode("\n", $times));
+file_put_contents(__DIR__ . "/logs/search_schedule.log", implode("\n", $times));
 
 foreach ($times as $time) {
     // 各実行時刻にcronで呼び出す設定を行う想定
