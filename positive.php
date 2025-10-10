@@ -1,5 +1,21 @@
 <?php
+// ==== 文字化け対策（UTF-8に統一） ====
+// タイムゾーン
+date_default_timezone_set('Asia/Tokyo');
 
+// PHPのデフォルト文字コードをUTF-8に
+ini_set('default_charset', 'UTF-8');
+mb_internal_encoding('UTF-8');
+mb_http_output('UTF-8');
+
+// Web実行時はHTTPヘッダもUTF-8で明示
+if (php_sapi_name() !== 'cli') {
+    header('Content-Type: text/plain; charset=UTF-8');
+    // 出力バッファでUTF-8変換（念のため）
+    if (function_exists('mb_output_handler')) {
+        ob_start('mb_output_handler');
+    }
+}
 /**
  * 渡邉英徳ポジティブキーワード検索スクリプト
  * 目的: Google検索でポジティブクエリを自然分散実行（サジェスト健全化支援）
