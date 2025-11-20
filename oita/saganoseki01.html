@@ -1,9 +1,41 @@
 <html>
 
 <head>
-    <title>大分市佐賀関・被災状況3Dデータ</title>
+    <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
+    <meta charset="UTF-8">
+    <!-- 元のコードに含まれていたリフレッシュ設定 -->
+    <!-- 
     <meta http-equiv="refresh" content="27">
-    <meta charset="UTF-8"> <!-- 日本語表示のために文字コード指定を追加 -->
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- OGP設定 (Facebook, LINE, Discordなど) -->
+    <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
+    <meta property="og:description"
+        content="2025年11月19日07:40ごろの大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+    <meta property="og:type" content="website">
+
+    <!-- 【要変更】実際に公開するこのページのURL -->
+    <meta property="og:url" content="https://oita.archiving.jp/saganoseki01.html">
+
+    <!-- 【要変更】SNSでシェアされた時に表示する画像のURL (推奨サイズ: 1200x630) -->
+    <meta property="og:image" content="https://oita.archiving.jp/sns.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <meta property="og:site_name" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
+
+    <!-- X (Twitter) 共有用のカードタグ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <!-- 渡邉先生のアカウントを指定しています -->
+    <meta name="twitter:site" content="@hwtnv">
+    <meta name="twitter:creator" content="@hwtnv">
+    <meta name="twitter:title" content="大分市佐賀関の大規模火災・被災状況">
+    <meta name="twitter:description"
+        content="2025年11月19日10:00ごろの大分市佐賀関の大規模火災・被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+    <!-- 【要変更】OG:IMAGEと同じ画像のURL -->
+    <meta name="twitter:image" content="https://YOUR-DOMAIN/sns.jpg">
+
     <style>
         html {
             overflow: hidden;
@@ -14,10 +46,10 @@
             background: black;
             padding: 0;
             margin: 0;
+            /* 視認性の高いゴシック体フォントを指定 */
             font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
         }
 
-        /* iframeのスタイル（変更なし） */
         iframe {
             position: absolute;
             top: 0;
@@ -33,7 +65,6 @@
             bottom: 20px;
             right: 20px;
             z-index: 100;
-            /* 3D表示より手前に表示 */
 
             /* 上品なすりガラス風デザイン */
             background: rgba(0, 0, 0, 0.6);
@@ -47,7 +78,7 @@
             text-align: right;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             pointer-events: none;
-            /* テキスト上のクリックを透過させ、背面の3D操作を阻害しないように設定（テキスト選択したい場合はautoにしてください） */
+            /* マウス操作を透過させる */
         }
 
         .credit-title {
@@ -61,7 +92,6 @@
             font-size: 11px;
             line-height: 1.6;
             opacity: 0.9;
-            /* 少し透過させて階層をつける */
             font-weight: 400;
         }
 
@@ -97,7 +127,7 @@
     <div class="credit-container">
         <div class="credit-title">大分市佐賀関の被災状況</div>
         <div class="credit-info">
-            2025年11月19日10:00ごろ<br>
+            2025年11月19日07:40ごろ<br>
             ドローン映像撮影：大分合同新聞社<br>
             3Dデータ作成：東京大学大学院 渡邉英徳研究室
         </div>
