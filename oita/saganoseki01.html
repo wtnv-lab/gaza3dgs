@@ -19,7 +19,7 @@
     <meta property="og:url" content="https://oita.archiving.jp/saganoseki01.html">
 
     <!-- 【要変更】SNSでシェアされた時に表示する画像のURL (推奨サイズ: 1200x630) -->
-    <meta property="og:image" content="https://oita.archiving.jp/sns.jpg">
+    <meta property="og:image" content="https://oita.archiving.jp/sns2.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
 
@@ -34,7 +34,7 @@
     <meta name="twitter:description"
         content="2025年11月19日10:00ごろの大分市佐賀関の大規模火災・被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
     <!-- 【要変更】OG:IMAGEと同じ画像のURL -->
-    <meta name="twitter:image" content="https://oita.archiving.jp/sns.jpg">
+    <meta name="twitter:image" content="https://oita.archiving.jp/sns2.jpg">
 
     <style>
         html {
@@ -62,8 +62,8 @@
         /* クレジット表示エリアのスタイル */
         .credit-container {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            top: 20px;
+            left: 20px;
             z-index: 100;
 
             /* 上品なすりガラス風デザイン */
@@ -75,7 +75,7 @@
 
             padding: 15px 20px;
             color: #ffffff;
-            text-align: right;
+            text-align: left;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             pointer-events: none;
             /* マウス操作を透過させる */
@@ -98,8 +98,8 @@
         /* スマートフォン表示時の調整 */
         @media (max-width: 600px) {
             .credit-container {
-                bottom: 10px;
-                right: 10px;
+                top: 10px;
+                left: 10px;
                 padding: 10px 15px;
                 max-width: 90%;
             }
@@ -117,11 +117,8 @@
 
 <body>
     <!-- 3D Viewer -->
-    <iframe title="大分市佐賀関の被災状況"
-        src="https://www.kiriengine.app/share/3dgsEmbed/1991363516967157760?userId=1062524&type=0&bg_theme=dark&auto_spin=1"
-        frameborder="0" allowfullscreen mozallowfullscreen webkitallowfullscreen allow="autoplay; fullscreen;"
-        execution-while-out-of-viewport execution-while-not-rendered
-        style="max-width:100%;max-height:100%;min-width:100%;min-height:100%;"></iframe>
+    <iframe id="viewer" width="800" height="500" allow="fullscreen; xr-spatial-tracking"
+        src="https://superspl.at/s?id=834835a0"></iframe>
 
     <!-- Credit Overlay -->
     <div class="credit-container">
