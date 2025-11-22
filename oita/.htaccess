@@ -1,41 +1,20 @@
 AddDefaultCharset UTF-8
-
 <IfModule mod_deflate.c>
-    # ----------------------------------------------------------------
-    # 【重要】Base64埋め込みHTMLのための追加設定
-    # ----------------------------------------------------------------
-    
-    # 圧縮レベルを最大（1～9）に設定します。
-    # Base64で肥大化したファイルの転送サイズを最小限に抑えるのに有効です。
-    DeflateCompressionLevel 9
-
-    # ----------------------------------------------------------------
-    # 基本設定
-    # ----------------------------------------------------------------
-
-    # 1. .ply拡張子の定義（外部ファイルとして使う場合用）
-    AddType application/ply .ply
-
     # 圧縮を有効にする
     SetOutputFilter DEFLATE
 
-    # 古いブラウザ対策
+    # 古いブラウザの互換性対策（必要な場合）
     BrowserMatch ^Mozilla/4 gzip-only-text/html
     BrowserMatch ^Mozilla/4\.0[678] no-gzip
     BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
 
-    # 画像（すでに圧縮済み）や動画は再圧縮しない
+    # 画像などは圧縮しない（既に圧縮されているためCPUの無駄になることが多い）
     SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|ico|zip|gz|mp4)$ no-gzip dont-vary
 
-    # ----------------------------------------------------------------
-    # 圧縮対象のMIMEタイプ指定
-    # ----------------------------------------------------------------
-
-    # ★ここが最重要です：HTMLファイルを圧縮対象にします
-    AddOutputFilterByType DEFLATE text/html
-    
-    # その他のテキスト形式も圧縮
+    # 圧縮するMIMEタイプを指定
+    # HTML, CSS, JS, JSON, XML, SVG, フォントなどを対象にします
     AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
     AddOutputFilterByType DEFLATE text/xml
     AddOutputFilterByType DEFLATE text/css
     AddOutputFilterByType DEFLATE application/xml
@@ -50,13 +29,9 @@ AddDefaultCharset UTF-8
     AddOutputFilterByType DEFLATE font/ttf
     AddOutputFilterByType DEFLATE font/otf
     AddOutputFilterByType DEFLATE font/x-woff
-    
-    # .plyファイル（外部読み込み時）も圧縮
-    AddOutputFilterByType DEFLATE application/ply
 
-    # プロキシサーバー対策
+    # プロキシサーバーがキャッシュを適切に扱えるようにヘッダーを追加
     <IfModule mod_headers.c>
         Header append Vary User-Agent env=!dont-vary
     </IfModule>
-
 </IfModule>
