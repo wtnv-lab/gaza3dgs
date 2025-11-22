@@ -475,27 +475,6 @@
 			.credit-info {
 				font-size: 10px;
 			}
-
-			/* 初期状態：ぼかしあり */
-			.poster-initial {
-				transition: filter 1s ease-out, opacity 1s ease-out;
-				filter: blur(20px);
-				opacity: 0;
-
-				/* 描画最適化のヒント */
-				will-change: filter, opacity;
-
-				width: 100%;
-				height: 100%;
-				object-fit: cover;
-				display: block;
-			}
-
-			/* 完了状態：ぼかしなし */
-			.poster-active {
-				filter: blur(0px);
-				opacity: 1;
-			}
 		}
 	</style>
 	<script type="module">
@@ -512,37 +491,8 @@
 		const settingsUrl = url.searchParams.has('settings') ? url.searchParams.get('settings') : './settings.json';
 		const contentUrl = url.searchParams.has('content') ? url.searchParams.get('content') : './scene.compressed.ply';
 
-		// 【修正版】画面に追加されるのを待ってからアニメーションする関数
-		const createAnimatedPoster = (url) => {
-			if (!url) return null;
-			const img = createImage(url);
-
-			// 1. まず初期状態を設定
-			img.classList.add('poster-initial');
-
-			// 2. 「画面に追加されたか？」を定期的にチェックする関数
-			const checkAndAnimate = () => {
-				if (img.isConnected) {
-					// 画面に追加されたのを確認できた！
-					// 描画タイミングを1フレーム待ってからクラスを追加
-					requestAnimationFrame(() => {
-						img.classList.add('poster-active');
-					});
-				} else {
-					// まだ画面にいないなら、50ミリ秒後にもう一度チェック
-					setTimeout(checkAndAnimate, 50);
-				}
-			};
-
-			// チェック開始
-			checkAndAnimate();
-
-			return img;
-		};
-
 		const sseConfig = {
-			poster: createAnimatedPoster("img/01.jpg"),
-			// ... 他の設定はそのまま ...
+			poster: posterUrl && createImage(posterUrl),
 			skyboxUrl,
 			contentUrl,
 			contents: fetch("3dgs/01.ply"),
