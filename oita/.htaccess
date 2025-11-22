@@ -1,3 +1,4 @@
+AddDefaultCharset UTF-8
 <IfModule mod_deflate.c>
     # 圧縮を有効にする
     SetOutputFilter DEFLATE
