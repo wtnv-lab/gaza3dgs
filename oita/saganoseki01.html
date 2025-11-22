@@ -80,31 +80,41 @@
 		}
 
 		/* loadingWrap */
+		/* loadingWrap（右下のスピナー） */
 		#loadingWrap {
 			position: fixed;
-			bottom: 120px;
-			left: 50%;
-			transform: translate(-50%, 0);
-			width: 380px;
+			bottom: 24px;
+			right: 24px;
 			display: flex;
-			flex-direction: column;
-			padding: 16px;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 12px;
+			border-radius: 999px;
+			background: rgba(0, 0, 0, 0.7);
+			z-index: 1000;
 		}
 
-		#loadingWrap>#loadingText {
-			font-size: 18px;
+		#loadingSpinner {
+			width: 20px;
+			height: 20px;
+			border-radius: 50%;
+			border: 2px solid rgba(255, 255, 255, 0.3);
+			border-top-color: #FFAF50;
+			animation: spin 0.9s linear infinite;
+		}
+
+		#loadingMessage {
 			color: #fff;
-			text-align: center;
-			text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+			font-size: 13px;
 		}
 
-		#loadingWrap>#loadingBar {
-			width: 100%;
-			height: 10px;
-			margin-top: 8px;
-			border-radius: 4px;
-			overflow: hidden;
+		/* スピナーの回転 */
+		@keyframes spin {
+			to {
+				transform: rotate(360deg);
+			}
 		}
+
 
 		/* controlsWrap */
 		#controlsWrap {
@@ -532,9 +542,9 @@
 		<div id="poster"></div>
 
 		<!-- Loading Indicator -->
-		<div id="loadingWrap">
-			<div id="loadingText"></div>
-			<div id="loadingBar"></div>
+		<div id="loadingWrap" class="hidden">
+			<div id="loadingSpinner"></div>
+			<div id="loadingMessage">Now loading...</div>
 		</div>
 
 		<div id="controlsWrap" class="faded-in">
@@ -100615,22 +100625,34 @@ fn fragmentMain(input: FragmentInput) -> FragmentOutput {
 				'orbitCamera',
 				'hqCheck', 'hqOption', 'lqCheck', 'lqOption',
 				'reset', 'frame',
-				'loadingText', 'loadingBar',
 				'joystickBase', 'joystick',
 				'tooltip'
 			].reduce((acc, id) => {
 				acc[id] = document.getElementById(id);
 				return acc;
 			}, {});
+			const loadingWrap = document.getElementById('loadingWrap');
+			let hasShownLoading = false;
 			// Handle loading progress updates
-			events.on('progress:changed', (progress) => {
-				dom.loadingText.textContent = `${progress}%`;
-				if (progress < 100) {
-					dom.loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${progress}%, white ${progress}%, white 100%)`;
+			// ロード中はシンプルなスピナーを表示（パーセントは出さない）
+			events.on('progress:changed', () => {
+				if (!hasShownLoading) {
+					hasShownLoading = true;
+					loadingWrap.classList.remove('hidden');
 				}
-				else {
-					dom.loadingBar.style.backgroundImage = 'linear-gradient(90deg, #F60 0%, #F60 100%)';
+			});
+
+			// 最初のフレームが描画されたらスピナーを消す
+			events.on('progress:changed', () => {
+				if (!hasShownLoading) {
+					hasShownLoading = true;
+					loadingWrap.classList.remove('hidden');
 				}
+			});
+
+			// 最初のフレームが描画されたらスピナーを消す
+			events.on('firstFrame', () => {
+				loadingWrap.classList.add('hidden');
 			});
 			// Hide loading bar once first frame is rendered
 			events.on('firstFrame', () => {
