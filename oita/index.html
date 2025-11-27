@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
     <meta property="og:description"
         content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
@@ -47,6 +46,42 @@
             flex-direction: column;
             height: 100%;
             width: 100%;
+            position: relative;
+            /* インフォボタンの基準位置 */
+        }
+
+        /* インフォメーションボタンのスタイル */
+        .info-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            background-color: rgba(30, 30, 30, 0.8);
+            /* 半透明の黒背景 */
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            /* iframeより手前に表示 */
+            color: #fff;
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: background-color 0.2s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .info-button:hover {
+            background-color: #4CAF50;
+            /* ホバー時はテーマカラーに */
+        }
+
+        .info-button svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
         }
 
         /* コンテンツエリア */
@@ -128,6 +163,16 @@
 <body>
 
     <div class="app-container">
+
+        <!-- インフォメーションボタン (右上固定) -->
+        <a href="https://labo.wtnv.jp/2025/11/3d.html" target="_blank" rel="noopener noreferrer" class="info-button"
+            aria-label="詳細情報">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+            </svg>
+        </a>
+
         <!-- コンテンツ表示エリア -->
         <div id="content-wrapper">
             <!-- iframe生成場所 -->
