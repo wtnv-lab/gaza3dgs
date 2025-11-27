@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
+    <meta property="og:description"
+        content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://oita.archiving.jp/saganoseki01.html">
+    <meta property="og:image" content="https://oita.archiving.jp/sns.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@hwtnv">
+    <meta name="twitter:creator" content="@hwtnv">
+    <meta name="twitter:title" content="大分市佐賀関の大規模火災・被災状況">
+    <meta name="twitter:description"
+        content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+    <meta name="twitter:image" content="https://oita.archiving.jp/sns.jpg">
+    <style>
+        /* 基本設定 */
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            /* モバイルブラウザのアドレスバー伸縮対策 */
+            height: 100vh;
+            height: 100dvh;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", sans-serif;
+            overflow: hidden;
+            /* スクロール禁止 */
+            background-color: #121212;
+            color: #fff;
+            overscroll-behavior: none;
+        }
+
+        /* 全体レイアウト */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* コンテンツエリア */
+        #content-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background-color: #000;
+            /* 読み込み中アニメーション */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50"><path fill="%23888" d="M25.251,6.461c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615V6.461z"><animateTransform attributeType="xml" attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="0.8s" repeatCount="indefinite"/></path></svg>');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 40px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background-color: #fff;
+        }
+
+        /* ボトムナビゲーション */
+        .bottom-nav {
+            height: 60px;
+            background-color: #1e1e1e;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 10;
+
+            /* iPhoneホームバー対応 */
+            padding-bottom: env(safe-area-inset-bottom);
+            height: calc(60px + env(safe-area-inset-bottom));
+        }
+
+        .nav-button {
+            background: none;
+            border: none;
+            color: #888;
+            flex: 1;
+            height: 100%;
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.2s;
+        }
+
+        /* アイコン */
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+            fill: currentColor;
+        }
+
+        .nav-text {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* アクティブ状態 */
+        .nav-button.active {
+            color: #4CAF50;
+        }
+
+        .nav-button:active {
+            background-color: #2a2a2a;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- コンテンツ表示エリア -->
+        <div id="content-wrapper">
+            <!-- iframe生成場所 -->
+        </div>
+
+        <!-- ボトムナビゲーション -->
+        <nav class="bottom-nav">
+            <!-- ボタン1 -->
+            <button class="nav-button" onclick="loadContent(0)">
+                <!-- 3Dキューブアイコン -->
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                </svg>
+                <span class="nav-text">3Dデータ1</span>
+            </button>
+
+            <!-- ボタン2 -->
+            <button class="nav-button" onclick="loadContent(1)">
+                <!-- 3Dキューブアイコン -->
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                </svg>
+                <span class="nav-text">3Dデータ2</span>
+            </button>
+
+            <!-- ボタン3 -->
+            <button class="nav-button" onclick="loadContent(2)">
+                <!-- 地球儀アイコン -->
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                </svg>
+                <span class="nav-text">3Dマップ</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const contents = [
+            "https://oita.archiving.jp/saganoseki01.html",
+            "https://oita.archiving.jp/saganoseki02.html",
+            "https://ion.cesium.com/stories/viewer/?id=e09c2cee-167b-4e05-a6cb-7d1d77fb4846"
+        ];
+
+        const wrapper = document.getElementById('content-wrapper');
+        const buttons = document.querySelectorAll('.nav-button');
+
+        function loadContent(index) {
+            // ボタンのアクティブ状態更新
+            buttons.forEach(btn => btn.classList.remove('active'));
+            buttons[index].classList.add('active');
+
+            // メモリ解放（DOM破棄）
+            wrapper.innerHTML = '';
+
+            // 再レンダリング（少し遅延させて負荷分散）
+            setTimeout(() => {
+                const iframe = document.createElement('iframe');
+                iframe.src = contents[index];
+                iframe.setAttribute('allowfullscreen', 'true');
+                iframe.setAttribute('allow', 'geolocation; microphone; camera; gyroscope; accelerometer');
+
+                wrapper.appendChild(iframe);
+            }, 50);
+        }
+
+        // 初回ロード
+        loadContent(0);
+
+    </script>
+
+</body>
+
+</html>
