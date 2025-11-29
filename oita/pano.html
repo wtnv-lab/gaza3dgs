@@ -81,6 +81,16 @@
             transition: opacity 1.0s ease-in-out;
         }
 
+        /* ★追加修正: モーションセンサーボタンを強制非表示 */
+        .pnlm-orientation-button {
+            display: none !important;
+        }
+
+        /* 標準UIコンテナも非表示 */
+        .pnlm-controls-container {
+            display: none !important;
+        }
+
         .ui-layer {
             position: absolute;
             top: 0;
@@ -434,11 +444,14 @@
                     "minPitch": 0, "maxPitch": 0,
                     "minYaw": -haov / 2, "maxYaw": haov / 2,
 
-                    "compass": false, "showZoomCtrl": false,
+                    // UI非表示 (標準コントロール、コンパス等)
+                    "showControls": false,
+                    "compass": false,
+                    "showZoomCtrl": false,
                     "mouseZoom": false, "keyboardZoom": false,
                     "showFullscreenCtrl": false,
 
-                    // モーション検出(ジャイロ)無効化
+                    // モーション検出(ジャイロ)無効化設定
                     "orientationOnByDefault": false,
 
                     "yaw": startYaw,
