@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archive Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+    <style>
+        /* 基本設定：黒背景、明朝体・ゴシック体の混植で上品に */
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            overflow: hidden;
+            font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "HGS明朝E", "MS PMincho", "MS 明朝", serif;
+        }
+
+        #panorama {
+            width: 100%;
+            height: 100vh;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            /* ゆっくりフェードイン */
+        }
+
+        /* コントロールバーのデザイン */
+        #control-bar {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            gap: 1px;
+            /* ボタン間の隙間 */
+            background: rgba(255, 255, 255, 0.1);
+            /* 極めて薄い枠 */
+            padding: 1px;
+        }
+
+        /* ボタンのデザイン */
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: #aaa;
+            border: none;
+            padding: 12px 24px;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            /* 数字はサンセリフで見やすく */
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .nav-btn:hover {
+            background: rgba(30, 30, 30, 0.8);
+            color: #fff;
+        }
+
+        /* 選択中のボタン */
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #111;
+            font-weight: bold;
+        }
+
+        /* ローディング表示 */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #555;
+            font-size: 11px;
+            letter-spacing: 3px;
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading">LOADING</div>
+
+    <div id="panorama"></div>
+
+    <div id="control-bar">
+        <button class="nav-btn active" onclick="switchPano(0)">01</button>
+        <button class="nav-btn" onclick="switchPano(1)">02</button>
+        <button class="nav-btn" onclick="switchPano(2)">03</button>
+    </div>
+
+    <script>
+        // 画像リスト
+        const panoImages = [
+            'pano/pano01.jpg',
+            'pano/pano02.jpg',
+            'pano/pano03.jpg'
+        ];
+
+        let viewer;
+        let currentIndex = 0;
+        const panoDiv = document.getElementById('panorama');
+        const btns = document.querySelectorAll('.nav-btn');
+
+        // 初回読み込み
+        window.addEventListener('load', () => {
+            loadPanorama(panoImages[currentIndex]);
+        });
+
+        // リサイズ時の再計算（遅延実行）
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                loadPanorama(panoImages[currentIndex]);
+            }, 300);
+        });
+
+        // 画像切り替え関数
+        function switchPano(index) {
+            if (index === currentIndex && viewer) return; // 同じ画像なら何もしない
+
+            currentIndex = index;
+
+            // ボタンの見た目更新
+            btns.forEach((btn, i) => {
+                if (i === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            // 一旦フェードアウトしてから読み込み
+            panoDiv.style.opacity = 0;
+            setTimeout(() => {
+                loadPanorama(panoImages[index]);
+            }, 300);
+        }
+
+        function loadPanorama(imageUrl) {
+            if (viewer) {
+                viewer.destroy();
+            }
+
+            const img = new Image();
+            img.onload = function () {
+                // 画像スペック取得
+                const imgW = this.width;
+                const imgH = this.height;
+
+                // 画面スペック取得
+                const screenW = panoDiv.clientWidth;
+                const screenH = panoDiv.clientHeight;
+                const screenAspect = screenW / screenH;
+
+                // --- 自動計算ロジック (前回同様) ---
+                const haov = 220; // 画像の水平画角推定値
+                const vaov = haov * (imgH / imgW); // 垂直画角算出
+
+                // 画面フィット計算
+                const vfovRad = (vaov * Math.PI) / 180;
+                const hfovRad = 2 * Math.atan(Math.tan(vfovRad / 2) * screenAspect);
+                let optimalHfov = (hfovRad * 180) / Math.PI;
+
+                // PCなどで広角になりすぎるのを防ぐ
+                if (optimalHfov > 120) optimalHfov = 120;
+
+                // 上下移動制限 (Pitch)
+                // 画面ぴったりを維持するため、原則ロックするが、
+                // 横長画面で画像上下に余裕がある場合のみ少し動かせるように計算も可能。
+                // 今回は「余白なし」最優先のためロック(0)とします。
+                const pitchLimit = 0;
+
+                // ビューアー初期化
+                viewer = pannellum.viewer('panorama', {
+                    "type": "equirectangular",
+                    "panorama": imageUrl,
+                    "autoLoad": true,
+                    "backgroundColor": [10, 10, 10],
+
+                    // 形状設定
+                    "haov": haov,
+                    "vaov": vaov,
+                    "vOffset": 0,
+
+                    // 視界設定
+                    "hfov": optimalHfov,
+                    "minHfov": optimalHfov, // 固定
+                    "maxHfov": optimalHfov, // 固定
+
+                    // 動作制限
+                    "minPitch": -pitchLimit,
+                    "maxPitch": pitchLimit,
+                    "minYaw": -haov / 2,
+                    "maxYaw": haov / 2,
+
+                    // UI設定
+                    "compass": false,
+                    "showZoomCtrl": false,
+                    "mouseZoom": false,
+                    "keyboardZoom": false,
+                    "showFullscreenCtrl": false, // シンプルさを優先し非表示
+                    "autoRotate": -1.5           // ゆっくりと回転
+                });
+
+                // 読み込み完了後にフェードイン
+                // Pannellumのloadイベントがないため、少し待ってから表示
+                setTimeout(() => {
+                    panoDiv.style.opacity = 1;
+                }, 100);
+            };
+
+            // 画像読み込み開始
+            img.src = imageUrl;
+        }
+    </script>
+
+</body>
+
+</html>
