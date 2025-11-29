@@ -26,6 +26,7 @@
             background: #000;
         }
 
+        /* 背面: Google Street View (常に後ろ) */
         #gsv-container {
             width: 100%;
             height: 100%;
@@ -35,6 +36,7 @@
             z-index: 1;
         }
 
+        /* 前面: Panorama (常に手前) */
         #panorama {
             width: 100%;
             height: 100%;
@@ -42,9 +44,12 @@
             top: 0;
             left: 0;
             z-index: 10;
-            opacity: 1;
-            transition: opacity 0.6s ease;
             background: #000;
+            /* ロード前の黒背景 */
+
+            /* フェード設定 */
+            opacity: 1;
+            transition: opacity 1.0s ease-in-out;
         }
 
         .ui-layer {
@@ -78,7 +83,7 @@
             font-weight: bold;
             letter-spacing: 1px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.5s ease;
         }
 
         .era-btn:hover {
@@ -141,24 +146,22 @@
             font-family: sans-serif;
         }
 
+        /* 
+           ★重要: CSSによる表示制御 
+           JSでZ-Indexを入れ替えるのではなく、
+           Topレイヤー(Panorama)の透明度とクリック判定だけを操作する
+        */
+
+        /* PRESENTモード: 完全不透明、操作可能 */
         body.mode-present #panorama {
             opacity: 1 !important;
             pointer-events: auto;
-            visibility: visible;
         }
 
-        body.mode-present #gsv-container {
-            z-index: 1;
-        }
-
+        /* PASTモード: 完全透明、操作不可(クリックが貫通して下のGSVへ) */
         body.mode-past #panorama {
             opacity: 0 !important;
             pointer-events: none;
-            visibility: hidden;
-        }
-
-        body.mode-past #gsv-container {
-            z-index: 5;
         }
     </style>
 </head>
@@ -186,13 +189,11 @@
         </div>
     </div>
 
-    <!-- API KEY設定済み -->
     <script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCA3ZEZHFJKN5B4dokOSv2jcn8h-qoeAmc&callback=initGSV">
         </script>
 
     <script>
-        // --- ロケーション設定データ ---
         const scenes = [
             {
                 id: 1,
@@ -211,7 +212,6 @@
             {
                 id: 3,
                 local: 'pano/pano03.jpg',
-                // 修正箇所: スポット3の正しい情報
                 gsvPanoId: '98jWFmepv1axD4w3pAz38Q',
                 gsvHeading: 235.62,
                 gsvPitch: 0
@@ -240,7 +240,6 @@
                 }
             );
 
-            // ストリートビューの視界制限 (リミッター)
             gsvPanorama.addListener('pov_changed', () => {
                 if (isLimiting) return;
 
@@ -248,9 +247,7 @@
                 let pov = gsvPanorama.getPov();
                 let needUpdate = false;
 
-                // 水平画角制限: 正面から±110度
                 const hLimit = 110;
-                // 角度差分計算 (正規化)
                 let diff = (pov.heading - scene.gsvHeading + 540) % 360 - 180;
 
                 if (diff > hLimit) {
@@ -261,7 +258,6 @@
                     needUpdate = true;
                 }
 
-                // 垂直画角制限: 上下±10度
                 const vLimit = 10;
                 if (pov.pitch > vLimit) {
                     pov.pitch = vLimit;
@@ -278,7 +274,6 @@
                 }
             });
 
-            // ズーム無効化
             gsvPanorama.addListener('zoom_changed', () => {
                 if (gsvPanorama.getZoom() !== 0) {
                     gsvPanorama.setZoom(0);
@@ -297,7 +292,7 @@
                     let targetHeading = scene.gsvHeading + panYaw;
                     let targetPitch = pannellumViewer.getPitch();
 
-                    // モード切替時に自動回転を停止
+                    // フェードアウトの瞬間に動きを止め、静止画としてフェードさせる
                     pannellumViewer.stopAutoRotate();
 
                     gsvPanorama.setPov({ heading: targetHeading, pitch: targetPitch });
@@ -323,6 +318,7 @@
             if (mode === 'present') {
                 btns[0].classList.add('active'); btns[1].classList.remove('active');
                 if (pannellumViewer) {
+                    // Resizeを呼んでおくと、非表示中にウィンドウサイズが変わっていても崩れない
                     setTimeout(() => { pannellumViewer.resize(); }, 100);
                 }
             } else {
@@ -343,7 +339,6 @@
 
             if (gsvPanorama) {
                 gsvPanorama.setPano(scenes[index].gsvPanoId);
-                // ロケーション変更時に基準角度にリセット
                 gsvPanorama.setPov({ heading: scenes[index].gsvHeading, pitch: scenes[index].gsvPitch });
                 gsvPanorama.setZoom(0);
             }
@@ -368,6 +363,8 @@
                 let optimalHfov = (hfovRad * 180) / Math.PI;
                 if (optimalHfov > 120) optimalHfov = 120;
 
+                const startYaw = -haov / 2;
+
                 pannellumViewer = pannellum.viewer('panorama', {
                     "type": "equirectangular", "panorama": imageUrl, "autoLoad": true,
                     "backgroundColor": [10, 10, 10],
@@ -381,7 +378,8 @@
                     "mouseZoom": false, "keyboardZoom": false,
                     "showFullscreenCtrl": false,
 
-                    "autoRotate": -2
+                    "yaw": startYaw,
+                    "autoRotate": 3 // スピードアップ
                 });
             };
             img.src = imageUrl;
