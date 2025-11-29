@@ -86,6 +86,32 @@
 			font-weight: 400;
 		}
 
+		/* 戻るボタンのスタイル */
+		.back-to-home {
+			display: none;
+			/* デフォルトでは非表示 */
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			z-index: 101;
+			background: rgba(0, 0, 0, 0.6);
+			backdrop-filter: blur(8px);
+			-webkit-backdrop-filter: blur(8px);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			border-radius: 30px;
+			padding: 8px 16px;
+			color: #ffffff;
+			text-decoration: none;
+			font-size: 13px;
+			font-weight: 700;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			transition: background 0.2s;
+		}
+
+		.back-to-home:hover {
+			background: rgba(76, 175, 80, 0.8);
+		}
+
 		/* スマートフォン表示時の調整 */
 		@media (max-width: 600px) {
 			.credit-container {
@@ -102,6 +128,13 @@
 			.credit-info {
 				font-size: 10px;
 			}
+
+			.back-to-home {
+				top: 10px;
+				right: 10px;
+				font-size: 11px;
+				padding: 6px 12px;
+			}
 		}
 	</style>
 </head>
@@ -110,6 +143,7 @@
 	<iframe
 		src="https://lumalabs.ai/embed/d3e4d661-4dba-4a10-a6f5-5e121924dca2?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false"
 		title="luma embed"></iframe>
+
 	<!-- Credit Overlay -->
 	<div class="credit-container">
 		<div class="credit-title">大分市佐賀関の被災状況</div>
@@ -119,6 +153,18 @@
 			3Dデータ作成：東京大学大学院 渡邉英徳研究室
 		</div>
 	</div>
+
+	<!-- 一覧に戻るボタン (初期は非表示) -->
+	<a href="https://oita.archiving.jp/index.html" class="back-to-home" id="homeBtn">
+		一覧に戻る
+	</a>
+
+	<script>
+		// iframe外（単体）で開かれた場合のみボタンを表示
+		if (window.self === window.top) {
+			document.getElementById('homeBtn').style.display = 'block';
+		}
+	</script>
 </body>
 
 </html>
