@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
+    <!-- (metaタグは省略・既存のまま) -->
     <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
     <meta property="og:description"
         content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
@@ -78,6 +79,47 @@
             fill: currentColor;
         }
 
+        /* ▼▼▼ 追加: 支援金ボタンのスタイル ▼▼▼ */
+        .donation-button {
+            position: absolute;
+            top: 15px;
+            right: 70px;
+            /* インフォボタン(15px+44px)の左側に配置 */
+            height: 44px;
+            background-color: rgba(30, 30, 30, 0.8);
+            border-radius: 22px;
+            /* カプセル型 */
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            text-decoration: none;
+            z-index: 100;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .donation-button:hover {
+            background-color: #d32f2f;
+            /* ホバー時は少し赤くして強調 */
+            border-color: #d32f2f;
+        }
+
+        .donation-button:active {
+            transform: scale(0.95);
+        }
+
+        .donation-icon {
+            width: 18px;
+            height: 18px;
+            fill: #ff6b6b;
+            /* アイコンは赤系 */
+        }
+
         /* コンテンツエリア */
         #content-wrapper {
             flex-grow: 1;
@@ -126,11 +168,9 @@
             -webkit-tap-highlight-color: transparent;
             transition: color 0.2s;
             min-width: 0;
-            /* ▼▼▼ 追加: フォーカス時の枠線を消去 ▼▼▼ */
             outline: none;
         }
 
-        /* 念のためフォーカス疑似クラスでも消去指定 */
         .nav-button:focus {
             outline: none;
         }
@@ -161,6 +201,17 @@
 <body>
 
     <div class="app-container">
+
+        <!-- ▼▼▼ 追加: 支援金受付ボタン ▼▼▼ -->
+        <a href="https://www.city.oita.oita.jp/o029/saganosekifire-support.html" target="_blank"
+            rel="noopener noreferrer" class="donation-button">
+            <!-- ハートのアイコン -->
+            <svg class="donation-icon" viewBox="0 0 24 24">
+                <path
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            支援金受付
+        </a>
 
         <!-- インフォメーションボタン -->
         <a href="https://labo.wtnv.jp/2025/11/3d.html" target="_blank" rel="noopener noreferrer" class="info-button"
