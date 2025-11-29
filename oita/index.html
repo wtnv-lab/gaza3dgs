@@ -126,6 +126,13 @@
             -webkit-tap-highlight-color: transparent;
             transition: color 0.2s;
             min-width: 0;
+            /* ▼▼▼ 追加: フォーカス時の枠線を消去 ▼▼▼ */
+            outline: none;
+        }
+
+        /* 念のためフォーカス疑似クラスでも消去指定 */
+        .nav-button:focus {
+            outline: none;
         }
 
         .nav-icon {
@@ -218,23 +225,21 @@
         const wrapper = document.getElementById('content-wrapper');
         const buttons = document.querySelectorAll('.nav-button');
 
-        // コンテンツを描画する（URL変更はしない純粋な描画処理）
+        // 現在のタブインデックスを追跡する変数
+        let currentTabIndex = 0;
+
         function renderContent(index) {
-            // インデックスのバリデーション
             if (index < 0 || index >= contents.length) {
                 index = 0;
             }
+            currentTabIndex = index;
 
-            // ボタンのアクティブ状態更新
             buttons.forEach(btn => btn.classList.remove('active'));
             if (buttons[index]) {
                 buttons[index].classList.add('active');
             }
 
-            // メモリ解放（DOM破棄）
             wrapper.innerHTML = '';
-
-            // 再レンダリング（遅延させて負荷分散）
             setTimeout(() => {
                 const iframe = document.createElement('iframe');
                 iframe.src = contents[index];
@@ -244,18 +249,25 @@
             }, 50);
         }
 
-        // ユーザーがタブをクリックした時の処理
         function handleTabClick(index) {
-            // URLを更新する（ブラウザの履歴に追加）
             const url = new URL(window.location);
             url.searchParams.set('tab', index);
             window.history.pushState({ tab: index }, '', url);
-
-            // 描画を実行
             renderContent(index);
         }
 
-        // 初期化処理：URLパラメータからタブ番号を取得して表示
+        // キーボード操作
+        document.addEventListener('keydown', (event) => {
+            let newIndex = currentTabIndex;
+            if (event.key === 'ArrowRight') {
+                newIndex = (currentTabIndex + 1) % contents.length;
+                handleTabClick(newIndex);
+            } else if (event.key === 'ArrowLeft') {
+                newIndex = (currentTabIndex - 1 + contents.length) % contents.length;
+                handleTabClick(newIndex);
+            }
+        });
+
         function init() {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
@@ -264,27 +276,21 @@
             if (tabParam !== null && !isNaN(tabParam)) {
                 initialIndex = parseInt(tabParam, 10);
             }
-
             renderContent(initialIndex);
         }
 
-        // ブラウザの「戻る」「進む」ボタンが押された時の処理
         window.addEventListener('popstate', (event) => {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
             let index = 0;
-
             if (tabParam !== null && !isNaN(tabParam)) {
                 index = parseInt(tabParam, 10);
             }
             renderContent(index);
         });
 
-        // 実行
         init();
-
     </script>
-
 </body>
 
 </html>
