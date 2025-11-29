@@ -3,7 +3,10 @@
 
 <head>
     <title>佐賀関の大規模火災・被災状況パノラマアーカイブ</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- iOS対策: viewport-fit=cover と user-scalable=no を追加 -->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
     <meta property="og:title" content="佐賀関の大規模火災・被災状況パノラマアーカイブ">
     <meta property="og:description"
         content="大分市佐賀関の被災状況を記録したパノラマ画像アーカイブです。過去のストリートビューと切り替え可能です。映像撮影：大分合同新聞社、アプリ作成：東京大学大学院 渡邉英徳研究室">
@@ -32,14 +35,24 @@
             padding: 0;
             background-color: #111;
             overflow: hidden;
+            /* スクロール防止 */
             font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+            -webkit-text-size-adjust: 100%;
+            /* iOSでのフォントサイズ自動調整防止 */
         }
 
         #container {
-            position: relative;
+            /* iOS対策: fixedにして画面に固定 */
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 100vh;
+            /* iOSのアドレスバー対策: 100dvhを使用 */
+            height: 100dvh;
+            /* フォールバック */
+            height: 100%;
             background: #000;
+            overflow: hidden;
         }
 
         /* 背面: Google Street View (常に後ろ) */
@@ -87,6 +100,8 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 4px;
             display: flex;
+            /* iOS SafeArea対策 (上部) */
+            top: calc(20px + env(safe-area-inset-top));
         }
 
         .era-btn {
@@ -114,7 +129,6 @@
 
         #control-bar {
             position: absolute;
-            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
             pointer-events: auto;
@@ -123,6 +137,9 @@
             background: rgba(255, 255, 255, 0.15);
             padding: 1px;
             backdrop-filter: blur(4px);
+
+            /* iOS対策: Bottomバーが切れないようにSafeAreaを考慮 */
+            bottom: calc(40px + env(safe-area-inset-bottom));
         }
 
         .nav-btn {
@@ -147,12 +164,14 @@
 
         #info-text {
             position: absolute;
-            top: 25px;
             left: 25px;
             color: #fff;
             font-size: 14px;
             letter-spacing: 0.15em;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+
+            /* iOS SafeArea対策 (上部) */
+            top: calc(25px + env(safe-area-inset-top));
         }
 
         .sub-text {
@@ -165,7 +184,6 @@
         /* クレジット表示のスタイル */
         #credits {
             position: absolute;
-            bottom: 5px;
             right: 5px;
             text-align: right;
             color: rgba(255, 255, 255, 0.7);
@@ -174,22 +192,17 @@
             line-height: 1.6;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 1);
             pointer-events: auto;
-            /* 必要に応じてリンク化する場合のため */
+
+            /* iOS対策: Bottomバーと重ならないようにSafeAreaを考慮 */
+            bottom: calc(5px + env(safe-area-inset-bottom));
         }
 
-        /* 
-           ★重要: CSSによる表示制御 
-           JSでZ-Indexを入れ替えるのではなく、
-           Topレイヤー(Panorama)の透明度とクリック判定だけを操作する
-        */
-
-        /* PRESENTモード: 完全不透明、操作可能 */
+        /* 表示制御クラス */
         body.mode-present #panorama {
             opacity: 1 !important;
             pointer-events: auto;
         }
 
-        /* PASTモード: 完全透明、操作不可(クリックが貫通して下のGSVへ) */
         body.mode-past #panorama {
             opacity: 0 !important;
             pointer-events: none;
@@ -217,7 +230,7 @@
                 <button class="nav-btn" onclick="changeLocation(1)">02</button>
                 <button class="nav-btn" onclick="changeLocation(2)">03</button>
             </div>
-            <!-- クレジット追加 -->
+            <!-- クレジット -->
             <div id="credits">
                 映像撮影：大分合同新聞社<br>
                 アプリ作成：東京大学大学院 渡邉英徳研究室
@@ -269,10 +282,18 @@
                     pano: scenes[currentIndex].gsvPanoId,
                     pov: { heading: scenes[currentIndex].gsvHeading, pitch: scenes[currentIndex].gsvPitch },
                     zoom: 0,
-                    addressControl: false, fullscreenControl: false,
-                    motionTracking: false, motionTrackingControl: false,
-                    linksControl: true, showRoadLabels: false,
-                    disableDefaultUI: true, clickToGo: false
+
+                    // UI非表示設定
+                    addressControl: false,
+                    fullscreenControl: false,
+                    linksControl: true, // 移動矢印は表示
+                    showRoadLabels: false,
+                    disableDefaultUI: true,
+                    clickToGo: false,
+
+                    // モーション検出(ジャイロ)無効化
+                    motionTracking: false,
+                    motionTrackingControl: false
                 }
             );
 
@@ -328,8 +349,12 @@
                     let targetHeading = scene.gsvHeading + panYaw;
                     let targetPitch = pannellumViewer.getPitch();
 
-                    // フェードアウトの瞬間に動きを止め、静止画としてフェードさせる
+                    // オートローテーション停止
                     pannellumViewer.stopAutoRotate();
+
+                    // 位置ズレ防止のためリセット
+                    gsvPanorama.setPano(scene.gsvPanoId);
+                    gsvPanorama.setZoom(0);
 
                     gsvPanorama.setPov({ heading: targetHeading, pitch: targetPitch });
                 }
@@ -354,7 +379,6 @@
             if (mode === 'present') {
                 btns[0].classList.add('active'); btns[1].classList.remove('active');
                 if (pannellumViewer) {
-                    // Resizeを呼んでおくと、非表示中にウィンドウサイズが変わっていても崩れない
                     setTimeout(() => { pannellumViewer.resize(); }, 100);
                 }
             } else {
@@ -414,8 +438,11 @@
                     "mouseZoom": false, "keyboardZoom": false,
                     "showFullscreenCtrl": false,
 
+                    // モーション検出(ジャイロ)無効化
+                    "orientationOnByDefault": false,
+
                     "yaw": startYaw,
-                    "autoRotate": 3 // スピードアップ
+                    "autoRotate": 3
                 });
             };
             img.src = imageUrl;
