@@ -3,7 +3,6 @@
 
 <head>
     <title>佐賀関の大規模火災・被災状況パノラマアーカイブ</title>
-    <!-- iOS対策: viewport-fit=cover と user-scalable=no を追加 -->
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
@@ -35,27 +34,22 @@
             padding: 0;
             background-color: #111;
             overflow: hidden;
-            /* スクロール防止 */
             font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
             -webkit-text-size-adjust: 100%;
-            /* iOSでのフォントサイズ自動調整防止 */
         }
 
         #container {
-            /* iOS対策: fixedにして画面に固定 */
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            /* iOSのアドレスバー対策: 100dvhを使用 */
             height: 100dvh;
-            /* フォールバック */
             height: 100%;
             background: #000;
             overflow: hidden;
         }
 
-        /* 背面: Google Street View (常に後ろ) */
+        /* 背面: Google Street View */
         #gsv-container {
             width: 100%;
             height: 100%;
@@ -65,7 +59,7 @@
             z-index: 1;
         }
 
-        /* 前面: Panorama (常に手前) */
+        /* 前面: Panorama */
         #panorama {
             width: 100%;
             height: 100%;
@@ -74,19 +68,14 @@
             left: 0;
             z-index: 10;
             background: #000;
-            /* ロード前の黒背景 */
-
-            /* フェード設定 */
             opacity: 1;
             transition: opacity 1.0s ease-in-out;
         }
 
-        /* ★追加修正: モーションセンサーボタンを強制非表示 */
         .pnlm-orientation-button {
             display: none !important;
         }
 
-        /* 標準UIコンテナも非表示 */
         .pnlm-controls-container {
             display: none !important;
         }
@@ -110,7 +99,6 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 4px;
             display: flex;
-            /* iOS SafeArea対策 (上部) */
             top: calc(10px + env(safe-area-inset-top));
         }
 
@@ -147,8 +135,6 @@
             background: rgba(255, 255, 255, 0.15);
             padding: 1px;
             backdrop-filter: blur(4px);
-
-            /* iOS対策: Bottomバーが切れないようにSafeAreaを考慮 */
             bottom: calc(40px + env(safe-area-inset-bottom));
         }
 
@@ -179,8 +165,6 @@
             font-size: 14px;
             letter-spacing: 0.15em;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
-
-            /* iOS SafeArea対策 (上部) */
             top: calc(10px + env(safe-area-inset-top));
         }
 
@@ -191,7 +175,6 @@
             font-family: sans-serif;
         }
 
-        /* クレジット表示のスタイル */
         #credits {
             position: absolute;
             right: 5px;
@@ -202,12 +185,9 @@
             line-height: 1.6;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 1);
             pointer-events: auto;
-
-            /* iOS対策: Bottomバーと重ならないようにSafeAreaを考慮 */
             bottom: calc(5px + env(safe-area-inset-bottom));
         }
 
-        /* 表示制御クラス */
         body.mode-present #panorama {
             opacity: 1 !important;
             pointer-events: auto;
@@ -228,7 +208,7 @@
 
         <div class="ui-layer">
             <div id="info-text">
-                佐賀関の被災状況
+                大分市佐賀関の被災状況
                 <div class="sub-text">LOCATION <span id="loc-num">01</span></div>
             </div>
             <div id="era-switch">
@@ -240,7 +220,6 @@
                 <button class="nav-btn" onclick="changeLocation(1)">02</button>
                 <button class="nav-btn" onclick="changeLocation(2)">03</button>
             </div>
-            <!-- クレジット -->
             <div id="credits">
                 映像撮影：大分合同新聞社<br>
                 アプリ作成：東京大学大学院 渡邉英徳研究室
@@ -283,6 +262,9 @@
         let currentMode = 'present';
         let isLimiting = false;
 
+        // ★追加: 現在の適正GSVズーム値を保持する変数
+        let currentGsvZoom = 0;
+
         window.addEventListener('load', () => { loadPannellum(currentIndex); });
 
         function initGSV() {
@@ -291,19 +273,14 @@
                 {
                     pano: scenes[currentIndex].gsvPanoId,
                     pov: { heading: scenes[currentIndex].gsvHeading, pitch: scenes[currentIndex].gsvPitch },
-                    zoom: 0,
 
-                    // UI非表示設定
-                    addressControl: false,
-                    fullscreenControl: false,
-                    linksControl: true, // 移動矢印は表示
-                    showRoadLabels: false,
-                    disableDefaultUI: true,
-                    clickToGo: false,
+                    // 初期ズームはcurrentGsvZoomを使用（未計算なら0）
+                    zoom: currentGsvZoom,
 
-                    // モーション検出(ジャイロ)無効化
-                    motionTracking: false,
-                    motionTrackingControl: false
+                    addressControl: false, fullscreenControl: false,
+                    linksControl: true, showRoadLabels: false,
+                    disableDefaultUI: true, clickToGo: false,
+                    motionTracking: false, motionTrackingControl: false
                 }
             );
 
@@ -341,9 +318,11 @@
                 }
             });
 
+            // ★変更: ズーム変更時に「適正ズーム(currentGsvZoom)」に戻す
             gsvPanorama.addListener('zoom_changed', () => {
-                if (gsvPanorama.getZoom() !== 0) {
-                    gsvPanorama.setZoom(0);
+                // 誤差を許容して、明らかに違う場合のみリセット
+                if (Math.abs(gsvPanorama.getZoom() - currentGsvZoom) > 0.1) {
+                    gsvPanorama.setZoom(currentGsvZoom);
                 }
             });
         }
@@ -353,23 +332,21 @@
             const scene = scenes[currentIndex];
 
             if (mode === 'past') {
-                // [Present -> Past]
                 if (pannellumViewer && gsvPanorama) {
                     const panYaw = pannellumViewer.getYaw();
                     let targetHeading = scene.gsvHeading + panYaw;
                     let targetPitch = pannellumViewer.getPitch();
 
-                    // オートローテーション停止
                     pannellumViewer.stopAutoRotate();
 
-                    // 位置ズレ防止のためリセット
                     gsvPanorama.setPano(scene.gsvPanoId);
-                    gsvPanorama.setZoom(0);
+
+                    // ★追加: モード切替時にズームを適正値にセット
+                    gsvPanorama.setZoom(currentGsvZoom);
 
                     gsvPanorama.setPov({ heading: targetHeading, pitch: targetPitch });
                 }
             } else {
-                // [Past -> Present]
                 if (pannellumViewer && gsvPanorama) {
                     const gsvPov = gsvPanorama.getPov();
                     let targetYaw = gsvPov.heading - scene.gsvHeading;
@@ -410,7 +387,8 @@
             if (gsvPanorama) {
                 gsvPanorama.setPano(scenes[index].gsvPanoId);
                 gsvPanorama.setPov({ heading: scenes[index].gsvHeading, pitch: scenes[index].gsvPitch });
-                gsvPanorama.setZoom(0);
+                // ★追加: ロケーション変更時も適正ズームを適用（計算待ちの可能性があるがloadPannellumで再更新される）
+                gsvPanorama.setZoom(currentGsvZoom);
             }
         }
 
@@ -433,6 +411,19 @@
                 let optimalHfov = (hfovRad * 180) / Math.PI;
                 if (optimalHfov > 120) optimalHfov = 120;
 
+                // ★追加: Pannellumの画角(optimalHfov)からGSVのズーム値を逆算
+                // Zoom 0 = 180度(理論値) として、Zoom = log2(180 / FOV)
+                // 実際にはGSVのZoom0は90度程度に見えることが多いが、この計算式で比較的近く同期する
+                currentGsvZoom = Math.log2(180 / optimalHfov);
+
+                // 負の値にならないようにクランプ（通常Pannellum FOV < 180 なので正になるはず）
+                if (currentGsvZoom < 0) currentGsvZoom = 0;
+
+                // GSVが既にロードされていたら即時適用
+                if (gsvPanorama) {
+                    gsvPanorama.setZoom(currentGsvZoom);
+                }
+
                 const startYaw = -haov / 2;
 
                 pannellumViewer = pannellum.viewer('panorama', {
@@ -444,14 +435,11 @@
                     "minPitch": 0, "maxPitch": 0,
                     "minYaw": -haov / 2, "maxYaw": haov / 2,
 
-                    // UI非表示 (標準コントロール、コンパス等)
                     "showControls": false,
                     "compass": false,
                     "showZoomCtrl": false,
                     "mouseZoom": false, "keyboardZoom": false,
                     "showFullscreenCtrl": false,
-
-                    // モーション検出(ジャイロ)無効化設定
                     "orientationOnByDefault": false,
 
                     "yaw": startYaw,
