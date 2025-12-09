@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Metadata Settings -->
+    <meta property="og:title" content="Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip">
+    <meta property="og:description"
+        content="A panoramic image archive recording the damage at Al-Shifa Hospital in the Gaza Strip, Palestine. Created by: Hidenori Watanabe Laboratory, The University of Tokyo.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gaza.archiving.jp/pano_alshifa.html">
+    <meta property="og:image" content="https://gaza.archiving.jp/sns/pano_alshifa.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@hwtnv">
+    <meta name="twitter:creator" content="@hwtnv">
+    <meta name="twitter:title" content="Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip">
+    <meta name="twitter:description"
+        content="A panoramic image archive recording the damage at Al-Shifa Hospital in the Gaza Strip, Palestine. Created by: Hidenori Watanabe Laboratory, The University of Tokyo.">
+    <meta name="twitter:image" content="https://gaza.archiving.jp/sns/pano_alshifa.jpg">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            overflow: hidden;
+            /* English Serif Fonts */
+            font-family: "Georgia", "Times New Roman", Times, serif;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background: #000;
+        }
+
+        /* Panorama Area */
+        #panorama {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            background: #000;
+
+            /* Fade Transition */
+            opacity: 0;
+            transition: opacity 1.0s ease-in-out;
+        }
+
+        /* UI Layer */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        /* Location Control Bar */
+        #control-bar {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: auto;
+            display: flex;
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1px;
+            backdrop-filter: blur(4px);
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: #ccc;
+            border: none;
+            padding: 12px 24px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 60px;
+        }
+
+        .nav-btn.active,
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: #111;
+            font-weight: bold;
+        }
+
+        #info-text {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            color: #fff;
+            font-size: 16px;
+            letter-spacing: 0.05em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+        }
+
+        .sub-text {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 6px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Bottom Right Credits */
+        #credits {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            text-align: right;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 1);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container">
+        <div id="panorama"></div>
+
+        <div class="ui-layer">
+            <div id="info-text">
+                Al-Shifa Hospital, Gaza Strip
+                <div class="sub-text">LOCATION <span id="loc-num">01</span></div>
+            </div>
+
+            <div id="control-bar">
+                <button class="nav-btn active" onclick="changeLocation(0)">01</button>
+                <button class="nav-btn" onclick="changeLocation(1)">02</button>
+            </div>
+
+            <div id="credits">
+                Created by: Hidenori Watanabe Laboratory,<br>
+                The University of Tokyo
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Image Data Definition
+        const scenes = [
+            { id: 1, local: 'pano/al_shifa_01x2.jpg' },
+            { id: 2, local: 'pano/al_shifa_02x2.jpg' }
+        ];
+
+        let currentIndex = 0;
+        let pannellumViewer;
+        const panoDiv = document.getElementById('panorama');
+
+        // Initial Load
+        window.addEventListener('load', () => {
+            loadPannellum(currentIndex);
+        });
+
+        // Change Location
+        function changeLocation(index) {
+            if (index === currentIndex) return;
+            currentIndex = index;
+
+            // UI Update
+            document.getElementById('loc-num').innerText = '0' + (index + 1);
+            document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+                if (i === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            // Fade Out
+            panoDiv.style.opacity = 0;
+
+            setTimeout(() => {
+                loadPannellum(index);
+            }, 600);
+        }
+
+        // Pannellum Load Function
+        function loadPannellum(index) {
+            if (pannellumViewer) {
+                pannellumViewer.destroy();
+            }
+
+            const imageUrl = scenes[index].local;
+            const img = new Image();
+
+            img.onload = function () {
+                // Calculate optimal HFOV based on image aspect ratio and screen size
+                const imgW = this.width;
+                const imgH = this.height;
+                const screenAspect = panoDiv.clientWidth / panoDiv.clientHeight;
+
+                const haov = 220; // Estimated horizontal angle of view
+                const vaov = haov * (imgH / imgW);
+
+                const vfovRad = (vaov * Math.PI) / 180;
+                const hfovRad = 2 * Math.atan(Math.tan(vfovRad / 2) * screenAspect);
+                let optimalHfov = (hfovRad * 180) / Math.PI;
+                if (optimalHfov > 120) optimalHfov = 120;
+
+                // (前略)
+                const startYaw = -haov / 2;
+
+                pannellumViewer = pannellum.viewer('panorama', {
+                    "type": "equirectangular",
+                    "panorama": imageUrl,
+                    "autoLoad": true,
+                    "backgroundColor": [10, 10, 10],
+
+                    // 画像形状設定
+                    "haov": haov,
+                    "vaov": vaov,
+                    "vOffset": 0,
+
+                    // --- 修正箇所: ズームとパンの設定 ---
+
+                    // 画角設定 (ズーム範囲を拡大)
+                    "hfov": optimalHfov, // 初期値は画面フィット
+                    "minHfov": 20,       // かなりズームインできるようにする
+                    "maxHfov": 150,      // 広くズームアウトできるようにする
+
+                    // 視点移動制限 (画像の範囲内で上下パンを許可)
+                    "minPitch": -vaov / 2,
+                    "maxPitch": vaov / 2,
+                    "minYaw": -haov / 2,
+                    "maxYaw": haov / 2,
+
+                    // UI設定
+                    "compass": false,
+                    "showZoomCtrl": true,  // 【変更】ズームボタンを表示
+                    "mouseZoom": true,     // マウスホイール操作を有効化
+                    "keyboardZoom": true,  // キーボード操作を有効化
+                    "showFullscreenCtrl": false,
+
+                    // 初期視点とオートローテーション
+                    "yaw": startYaw,
+                    "autoRotate": 3
+                });
+
+                // Fade In after load
+                setTimeout(() => {
+                    panoDiv.style.opacity = 1;
+                }, 100);
+            };
+            img.src = imageUrl;
+        }
+
+        // Resize Handling
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                loadPannellum(currentIndex);
+            }, 300);
+        });
+    </script>
+
+</body>
+
+</html>
