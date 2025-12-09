@@ -4,7 +4,7 @@
 <head>
     <title>Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
     <!-- Metadata Settings -->
     <meta property="og:title" content="Panorama Archive of Damage at Al-Shifa Hospital, Gaza Strip">
@@ -43,7 +43,10 @@
         #container {
             position: relative;
             width: 100%;
+            /* フォールバック（古いブラウザ用） */
             height: 100vh;
+            /* iOSのアドレスバー伸縮に対応する動的高さ */
+            height: 100dvh;
             background: #000;
         }
 
@@ -76,7 +79,8 @@
         /* Location Control Bar */
         #control-bar {
             position: absolute;
-            bottom: 40px;
+            /* 元の40px + セーフエリアの高さ */
+            bottom: calc(40px + env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
             pointer-events: auto;
@@ -129,7 +133,8 @@
         /* Bottom Right Credits */
         #credits {
             position: absolute;
-            bottom: 15px;
+            /* 元の15px + セーフエリアの高さ */
+            bottom: calc(15px + env(safe-area-inset-bottom));
             right: 20px;
             text-align: right;
             color: rgba(255, 255, 255, 0.7);
