@@ -3,11 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
+
     <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
     <meta property="og:description"
-        content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+        content="2025年11月18日に発生した、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://oita.archiving.jp/index.html">
     <meta property="og:image" content="https://oita.archiving.jp/sns.jpg">
@@ -20,10 +22,10 @@
     <meta name="twitter:creator" content="@hwtnv">
     <meta name="twitter:title" content="大分市佐賀関の大規模火災・被災状況">
     <meta name="twitter:description"
-        content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
+        content="2025年11月18日に発生した、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
     <meta name="twitter:image" content="https://oita.archiving.jp/sns.jpg">
+
     <style>
-        /* 基本設定 */
         body,
         html {
             margin: 0;
@@ -38,7 +40,6 @@
             overscroll-behavior: none;
         }
 
-        /* 全体レイアウト */
         .app-container {
             display: flex;
             flex-direction: column;
@@ -47,75 +48,78 @@
             position: relative;
         }
 
-        /* インフォメーションボタン */
-        .info-button {
+        .header-controls {
             position: absolute;
             top: 15px;
             right: 15px;
-            width: 44px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* 共通のボタンスタイル */
+        .header-btn {
             height: 44px;
-            background-color: rgba(30, 30, 30, 0.8);
-            border-radius: 50%;
+            background-color: rgba(30, 30, 30, 0.85);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 100;
             color: #fff;
             text-decoration: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            transition: background-color 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.1s, background-color 0.2s;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .info-button:hover {
-            background-color: #4CAF50;
+        .header-btn:active {
+            transform: scale(0.92);
         }
 
-        .info-button svg {
+        /* インフォボタン */
+        .btn-circle {
+            width: 44px;
+            border-radius: 50%;
+        }
+
+        .btn-circle svg {
             width: 24px;
             height: 24px;
             fill: currentColor;
         }
 
-        /* 支援金ボタンのスタイル */
-        .donation-button {
-            position: absolute;
-            top: 15px;
-            right: 70px;
-            height: 44px;
-            background-color: rgba(30, 30, 30, 0.8);
+        /* 支援ボタン */
+        .btn-capsule {
+            padding: 0 14px;
             border-radius: 22px;
-            padding: 0 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #fff;
-            text-decoration: none;
-            z-index: 100;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: background-color 0.2s, transform 0.1s;
+            gap: 6px;
         }
 
-        .donation-button:hover {
-            background-color: #d32f2f;
-            border-color: #d32f2f;
-        }
-
-        .donation-button:active {
-            transform: scale(0.95);
-        }
-
-        .donation-icon {
-            width: 18px;
-            height: 18px;
+        .btn-capsule svg {
+            width: 20px;
+            height: 20px;
             fill: #ff6b6b;
+            /* ハートの赤色 */
         }
 
-        /* コンテンツエリア */
+        .btn-text {
+            font-size: 13px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        /* ホバー時の色設定 */
+        .btn-donation:hover {
+            background-color: rgba(60, 20, 20, 0.9);
+        }
+
+        .btn-info:hover {
+            background-color: rgba(20, 60, 20, 0.9);
+            color: #4CAF50;
+        }
+
         #content-wrapper {
             flex-grow: 1;
             position: relative;
@@ -136,16 +140,17 @@
 
         /* ボトムナビゲーション */
         .bottom-nav {
-            height: 60px;
             background-color: #1e1e1e;
             border-top: 1px solid #333;
             display: flex;
-            justify-content: space-around;
             align-items: center;
             flex-shrink: 0;
             z-index: 10;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0;
             padding-bottom: env(safe-area-inset-bottom);
-            height: calc(60px + env(safe-area-inset-bottom));
+            height: calc(56px + env(safe-area-inset-bottom));
         }
 
         .nav-button {
@@ -153,21 +158,17 @@
             border: none;
             color: #888;
             flex: 1;
+            min-width: 0;
             height: 100%;
-            padding-bottom: env(safe-area-inset-bottom);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
-            transition: color 0.2s;
-            min-width: 0;
+            transition: color 0.2s, background-color 0.2s;
             outline: none;
-        }
-
-        .nav-button:focus {
-            outline: none;
+            padding: 4px 0;
         }
 
         .nav-icon {
@@ -181,88 +182,105 @@
             font-size: 10px;
             font-weight: 500;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            padding: 0 2px;
         }
 
         .nav-button.active {
             color: #4CAF50;
+            background-color: #262626;
+        }
+
+        .nav-button.active .nav-icon {
+            transform: scale(1.1);
+            transition: transform 0.2s;
         }
 
         .nav-button:active {
-            background-color: #2a2a2a;
+            opacity: 0.7;
         }
     </style>
 </head>
 
 <body>
 
+    <svg style="display: none;">
+        <symbol id="icon-cube" viewBox="0 0 24 24">
+            <path
+                d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+        </symbol>
+        <symbol id="icon-globe" viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+        </symbol>
+        <!-- 修正: ハートマークに変更 -->
+        <symbol id="icon-support" viewBox="0 0 24 24">
+            <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </symbol>
+        <symbol id="icon-info" viewBox="0 0 24 24">
+            <path
+                d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+        </symbol>
+    </svg>
+
     <div class="app-container">
 
-        <!-- 支援金受付ボタン -->
-        <a href="https://www.city.oita.oita.jp/o029/saganosekifire-support.html" target="_blank"
-            rel="noopener noreferrer" class="donation-button">
-            <!-- ハートのアイコン -->
-            <svg class="donation-icon" viewBox="0 0 24 24">
-                <path
-                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-            支援金受付
-        </a>
+        <div class="header-controls">
+            <!-- 支援金ボタン -->
+            <a href="https://www.city.oita.oita.jp/o029/saganosekifire-support.html" target="_blank"
+                rel="noopener noreferrer" class="header-btn btn-capsule btn-donation" aria-label="支援金受付">
+                <svg>
+                    <use href="#icon-support"></use>
+                </svg>
+                <span class="btn-text">支援</span>
+            </a>
 
-        <!-- インフォメーションボタン -->
-        <a href="https://labo.wtnv.jp/2025/11/3d.html" target="_blank" rel="noopener noreferrer" class="info-button"
-            aria-label="詳細情報">
-            <svg viewBox="0 0 24 24">
-                <path
-                    d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-            </svg>
-        </a>
+            <!-- インフォボタン -->
+            <a href="https://labo.wtnv.jp/2025/11/3d.html" target="_blank" rel="noopener noreferrer"
+                class="header-btn btn-circle btn-info" aria-label="詳細情報">
+                <svg>
+                    <use href="#icon-info"></use>
+                </svg>
+            </a>
+        </div>
 
-        <!-- コンテンツ表示エリア -->
         <div id="content-wrapper"></div>
 
-        <!-- ボトムナビゲーション -->
         <nav class="bottom-nav">
-            <!-- ボタン1 (Index 0) -->
             <button class="nav-button" onclick="handleTabClick(0)">
-                <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                <svg class="nav-icon">
+                    <use href="#icon-cube"></use>
                 </svg>
                 <span class="nav-text">3Dデータ1</span>
             </button>
 
-            <!-- ボタン2 (Index 1) -->
             <button class="nav-button" onclick="handleTabClick(1)">
-                <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                <svg class="nav-icon">
+                    <use href="#icon-cube"></use>
                 </svg>
                 <span class="nav-text">3Dデータ2</span>
             </button>
 
-            <!-- ボタン3 (Index 2) -->
             <button class="nav-button" onclick="handleTabClick(2)">
-                <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                <svg class="nav-icon">
+                    <use href="#icon-cube"></use>
                 </svg>
                 <span class="nav-text">3Dデータ3</span>
             </button>
 
-            <!-- ▼▼▼ 追加: ボタン4 (Index 3) ▼▼▼ -->
             <button class="nav-button" onclick="handleTabClick(3)">
-                <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                <svg class="nav-icon">
+                    <use href="#icon-cube"></use>
                 </svg>
                 <span class="nav-text">3Dデータ4</span>
             </button>
 
-            <!-- ボタン5 (Index 4) -->
             <button class="nav-button" onclick="handleTabClick(4)">
-                <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                <svg class="nav-icon">
+                    <use href="#icon-globe"></use>
                 </svg>
                 <span class="nav-text">3Dマップ</span>
             </button>
@@ -274,14 +292,13 @@
             "saganoseki01.html",
             "saganoseki02.html",
             "saganoseki03.html",
-            "saganoseki04.html", // 追加
+            "saganoseki04.html",
             "https://ion.cesium.com/stories/viewer/?id=e09c2cee-167b-4e05-a6cb-7d1d77fb4846"
         ];
 
         const wrapper = document.getElementById('content-wrapper');
         const buttons = document.querySelectorAll('.nav-button');
 
-        // 現在のタブインデックスを追跡する変数
         let currentTabIndex = 0;
 
         function renderContent(index) {
@@ -312,7 +329,6 @@
             renderContent(index);
         }
 
-        // キーボード操作
         document.addEventListener('keydown', (event) => {
             let newIndex = currentTabIndex;
             if (event.key === 'ArrowRight') {
