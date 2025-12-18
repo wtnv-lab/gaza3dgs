@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>大分市佐賀関の大規模火災・被災状況3Dアーカイブ</title>
-    <!-- (metaタグは省略・既存のまま) -->
     <meta property="og:title" content="大分市佐賀関の大規模火災・被災状況3Dアーカイブ">
     <meta property="og:description"
         content="2025年11月19日、大分市佐賀関の被災状況を記録した3Dデジタルアーカイブです。ドローン映像撮影：大分合同新聞社、航空写真提供：国際航業株式会社、3Dデータ作成：東京大学大学院 渡邉英徳研究室">
@@ -79,16 +78,14 @@
             fill: currentColor;
         }
 
-        /* ▼▼▼ 追加: 支援金ボタンのスタイル ▼▼▼ */
+        /* 支援金ボタンのスタイル */
         .donation-button {
             position: absolute;
             top: 15px;
             right: 70px;
-            /* インフォボタン(15px+44px)の左側に配置 */
             height: 44px;
             background-color: rgba(30, 30, 30, 0.8);
             border-radius: 22px;
-            /* カプセル型 */
             padding: 0 16px;
             display: flex;
             align-items: center;
@@ -105,7 +102,6 @@
 
         .donation-button:hover {
             background-color: #d32f2f;
-            /* ホバー時は少し赤くして強調 */
             border-color: #d32f2f;
         }
 
@@ -117,7 +113,6 @@
             width: 18px;
             height: 18px;
             fill: #ff6b6b;
-            /* アイコンは赤系 */
         }
 
         /* コンテンツエリア */
@@ -202,7 +197,7 @@
 
     <div class="app-container">
 
-        <!-- ▼▼▼ 追加: 支援金受付ボタン ▼▼▼ -->
+        <!-- 支援金受付ボタン -->
         <a href="https://www.city.oita.oita.jp/o029/saganosekifire-support.html" target="_blank"
             rel="noopener noreferrer" class="donation-button">
             <!-- ハートのアイコン -->
@@ -254,8 +249,17 @@
                 <span class="nav-text">3Dデータ3</span>
             </button>
 
-            <!-- ボタン4 (Index 3) -->
+            <!-- ▼▼▼ 追加: ボタン4 (Index 3) ▼▼▼ -->
             <button class="nav-button" onclick="handleTabClick(3)">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M21 16.5c0 .38-.21.71-.53.88l-7.9 3.95c-.37.18-.79.18-1.15 0l-7.9-3.95C3.21 17.21 3 16.88 3 16.5V7.5c0-.38.21-.71.53-.88l7.9-3.95c.37-.18.79-.18 1.15 0l7.9 3.95c.32.17.53.5.53.88v9zM12 4.15L6.04 7.13 12 10.11l5.96-2.98L12 4.15zM5 15.91l6 3V9.98l-6-3v8.93zm8 3l6-3v-8.93l-6 3v8.93z" />
+                </svg>
+                <span class="nav-text">3Dデータ4</span>
+            </button>
+
+            <!-- ボタン5 (Index 4) -->
+            <button class="nav-button" onclick="handleTabClick(4)">
                 <svg class="nav-icon" viewBox="0 0 24 24">
                     <path
                         d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
@@ -270,6 +274,7 @@
             "saganoseki01.html",
             "saganoseki02.html",
             "saganoseki03.html",
+            "saganoseki04.html", // 追加
             "https://ion.cesium.com/stories/viewer/?id=e09c2cee-167b-4e05-a6cb-7d1d77fb4846"
         ];
 
