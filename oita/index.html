@@ -190,9 +190,7 @@
 
             background-color: #1e1e1e;
             border-radius: 16px;
-            /* 角丸も少し小さく */
             padding: 12px;
-            /* 20px -> 12px に縮小 */
             max-height: 70vh;
             overflow-y: auto;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
@@ -201,7 +199,6 @@
             /* モバイル向け: 中央配置 */
             width: 90%;
             max-width: 420px;
-            /* 最大幅も少し小さく */
             left: 50%;
             transform: translateX(-50%) translateY(-10px);
 
@@ -240,7 +237,6 @@
             justify-content: flex-end;
             align-items: center;
             margin-bottom: 4px;
-            /* 8px -> 4px に縮小 */
             width: 100%;
         }
 
@@ -249,14 +245,12 @@
             border: none;
             color: #888;
             padding: 4px;
-            /* タップ領域維持しつつ見た目は小さく */
             cursor: pointer;
             margin-right: -4px;
         }
 
         .menu-close svg {
             width: 20px;
-            /* アイコンサイズ縮小 */
             height: 20px;
         }
 
@@ -272,25 +266,20 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            /* 10px -> 6px に縮小 */
         }
 
         .content-item {
             background-color: #2a2a2a;
             border-radius: 8px;
-            /* 角丸縮小 */
             padding: 10px 12px;
-            /* 16px -> 10px/12px に縮小 */
             color: #fff;
             text-align: left;
             border: 1px solid transparent;
-            /* 枠線も細く */
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             gap: 10px;
-            /* アイコンとの間隔調整 */
         }
 
         .content-item:hover {
@@ -308,7 +297,6 @@
 
         .item-icon {
             width: 20px;
-            /* 24px -> 20px */
             height: 20px;
             fill: #888;
             flex-shrink: 0;
@@ -320,10 +308,8 @@
 
         .item-type {
             font-size: 10px;
-            /* 11px -> 10px */
             font-weight: bold;
             padding: 2px 6px;
-            /* パディング縮小 */
             border-radius: 4px;
             background-color: #444;
             color: #ddd;
@@ -333,7 +319,6 @@
 
         .item-text {
             font-size: 13px;
-            /* 14px -> 13px */
             font-weight: 500;
         }
     </style>
@@ -488,6 +473,15 @@
 
                 if (menuPanel.classList.contains('open') && !isClickInside && !isClickButton) {
                     closeMenu();
+                }
+            });
+
+            // キーボード操作 (左右矢印キー)
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft') {
+                    goPrev();
+                } else if (event.key === 'ArrowRight') {
+                    goNext();
                 }
             });
         }
