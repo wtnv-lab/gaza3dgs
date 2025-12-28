@@ -14,8 +14,6 @@
     <meta property="og:url" content="https://oita.archiving.jp/index.html">
     <meta property="og:image" content="https://oita.archiving.jp/sns.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="大分市佐賀関の大規模火災・被災状況">
-    <meta name="twitter:image" content="https://oita.archiving.jp/sns.jpg">
 
     <style>
         body,
@@ -41,41 +39,37 @@
         }
 
         /* --------------------------------------------------
-           上部コントロール（小型化・右寄せ）
+           上部コントロール
         -------------------------------------------------- */
         .header-controls {
             position: absolute;
             top: 10px;
-            /* 余白を詰める */
             right: 10px;
             z-index: 100;
             display: flex;
             gap: 8px;
-            /* 間隔を詰める */
             align-items: center;
         }
 
         .header-btn {
             height: 36px;
-            /* 44px -> 36px に小型化 */
-            background-color: rgba(30, 30, 30, 0.9);
+            background-color: rgba(30, 30, 30, 0.8);
             display: flex;
             justify-content: center;
             align-items: center;
             color: #fff;
             text-decoration: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             transition: transform 0.1s, background-color 0.2s;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .header-btn:active {
             transform: scale(0.95);
         }
 
-        /* 丸ボタン（Info） */
         .btn-circle {
             width: 36px;
             border-radius: 50%;
@@ -87,7 +81,16 @@
             fill: #ddd;
         }
 
-        /* カプセルボタン（支援） */
+        /* 一覧ボタンのアクティブ状態 */
+        .btn-circle.active {
+            background-color: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .btn-circle.active svg {
+            fill: #fff;
+        }
+
         .btn-capsule {
             padding: 0 10px;
             border-radius: 18px;
@@ -98,12 +101,10 @@
             width: 16px;
             height: 16px;
             fill: #ff6b6b;
-            /* ハートの赤 */
         }
 
         .btn-text {
             font-size: 11px;
-            /* 文字サイズ縮小 */
             font-weight: bold;
             line-height: 1;
         }
@@ -130,182 +131,185 @@
         }
 
         /* --------------------------------------------------
-           下部コントローラー（X対策：フローティング）
+           サイドナビゲーション
         -------------------------------------------------- */
-        .bottom-controls {
+        .side-nav-btn {
             position: absolute;
-            bottom: 30px;
-            /* 画面下端から浮かせる */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 400px;
-            height: 56px;
-
-            background-color: rgba(30, 30, 30, 0.95);
-            border-radius: 28px;
-            /* カプセル形状 */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 60px;
+            background-color: rgba(0, 0, 0, 0.4);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-
-            display: flex;
-            justify-content: space-between;
-            /* 両端と中央に配置 */
-            align-items: center;
-            padding: 0 8px;
-            z-index: 1000;
-
-            /* Xブラウザ等の下部バー対策 */
-            margin-bottom: env(safe-area-inset-bottom);
-        }
-
-        .control-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
+            color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            transition: all 0.2s;
+            z-index: 90;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.2s;
         }
 
-        .control-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
+        .side-nav-btn:hover {
+            background-color: rgba(0, 0, 0, 0.7);
         }
 
-        .control-btn:active {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #fff;
+        .side-nav-btn:active {
+            background-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* テキスト付きボタン（マップ・リスト）用 */
-        .btn-label-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
+        .side-nav-left {
+            left: 0;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+            border-left: none;
         }
 
-        .btn-label-text {
-            font-size: 9px;
-            font-weight: 500;
+        .side-nav-right {
+            right: 0;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            border-right: none;
         }
 
-        /* セパレータ */
-        .separator {
-            width: 1px;
-            height: 24px;
-            background-color: rgba(255, 255, 255, 0.1);
+        .side-nav-btn svg {
+            width: 32px;
+            height: 32px;
+            fill: #fff;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
         }
 
         /* --------------------------------------------------
-           リストモーダル（下からスライドイン）
+           ドロップダウンメニュー（コンパクト版）
         -------------------------------------------------- */
-        .modal-overlay {
+        .menu-panel {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
+            top: 60px;
             z-index: 2000;
+
+            background-color: #1e1e1e;
+            border-radius: 16px;
+            /* 角丸も少し小さく */
+            padding: 12px;
+            /* 20px -> 12px に縮小 */
+            max-height: 70vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+
+            /* モバイル向け: 中央配置 */
+            width: 90%;
+            max-width: 420px;
+            /* 最大幅も少し小さく */
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
         }
 
-        .modal-overlay.open {
+        /* PC・タブレット向け: 右上配置 */
+        @media (min-width: 600px) {
+            .menu-panel {
+                left: auto;
+                right: 10px;
+                width: 340px;
+                transform: translateY(-10px);
+            }
+        }
+
+        .menu-panel.open {
             opacity: 1;
             visibility: visible;
         }
 
-        .modal-content {
-            background-color: #1e1e1e;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            padding: 20px;
-            padding-bottom: calc(40px + env(safe-area-inset-bottom));
-            max-height: 70vh;
-            overflow-y: auto;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+        .menu-panel.open {
+            transform: translateX(-50%) translateY(0);
         }
 
-        .modal-overlay.open .modal-content {
-            transform: translateY(0);
+        @media (min-width: 600px) {
+            .menu-panel.open {
+                transform: translateY(0);
+            }
         }
 
-        .modal-header {
+        .menu-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
+            margin-bottom: 4px;
+            /* 8px -> 4px に縮小 */
+            width: 100%;
         }
 
-        .modal-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        .modal-close {
+        .menu-close {
             background: none;
             border: none;
             color: #888;
-            padding: 8px;
+            padding: 4px;
+            /* タップ領域維持しつつ見た目は小さく */
             cursor: pointer;
+            margin-right: -4px;
         }
 
-        /* リストアイテム */
+        .menu-close svg {
+            width: 20px;
+            /* アイコンサイズ縮小 */
+            height: 20px;
+        }
+
+        .menu-close:hover {
+            color: #fff;
+        }
+
         .content-list {
             list-style: none;
             padding: 0;
             margin: 0;
+            width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
+            /* 10px -> 6px に縮小 */
         }
 
         .content-item {
             background-color: #2a2a2a;
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 8px;
+            /* 角丸縮小 */
+            padding: 10px 12px;
+            /* 16px -> 10px/12px に縮小 */
             color: #fff;
             text-align: left;
-            border: 2px solid transparent;
+            border: 1px solid transparent;
+            /* 枠線も細く */
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            /* アイコンとの間隔調整 */
+        }
+
+        .content-item:hover {
+            background-color: #333;
         }
 
         .content-item:active {
             transform: scale(0.98);
         }
 
-        /* アクティブなアイテム */
         .content-item.active {
             border-color: #4CAF50;
             background-color: #1a331a;
         }
 
         .item-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            /* 24px -> 20px */
+            height: 20px;
             fill: #888;
             flex-shrink: 0;
         }
@@ -314,8 +318,22 @@
             fill: #4CAF50;
         }
 
+        .item-type {
+            font-size: 10px;
+            /* 11px -> 10px */
+            font-weight: bold;
+            padding: 2px 6px;
+            /* パディング縮小 */
+            border-radius: 4px;
+            background-color: #444;
+            color: #ddd;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         .item-text {
-            font-size: 14px;
+            font-size: 13px;
+            /* 14px -> 13px */
             font-weight: 500;
         }
     </style>
@@ -323,10 +341,9 @@
 
 <body>
 
-    <!-- アイコン定義 -->
     <svg style="display: none;">
         <symbol id="icon-list" viewBox="0 0 24 24">
-            <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" />
+            <path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z" />
         </symbol>
         <symbol id="icon-prev" viewBox="0 0 24 24">
             <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -359,6 +376,7 @@
     <div class="app-container">
         <!-- 右上：小型ヘッダー -->
         <div class="header-controls">
+            <!-- 支援ボタン -->
             <a href="https://www.city.oita.oita.jp/o029/saganosekifire-support.html" target="_blank"
                 rel="noopener noreferrer" class="header-btn btn-capsule btn-donation">
                 <svg>
@@ -366,6 +384,15 @@
                 </svg>
                 <span class="btn-text">支援</span>
             </a>
+
+            <!-- 一覧ボタン -->
+            <button class="header-btn btn-circle" id="btn-toggle-menu" onclick="toggleMenu()" aria-label="一覧">
+                <svg>
+                    <use href="#icon-list"></use>
+                </svg>
+            </button>
+
+            <!-- インフォボタン -->
             <a href="https://labo.wtnv.jp/2025/11/3d.html" target="_blank" rel="noopener noreferrer"
                 class="header-btn btn-circle btn-info">
                 <svg>
@@ -377,84 +404,58 @@
         <!-- コンテンツエリア -->
         <div id="content-wrapper"></div>
 
-        <!-- 下部：フローティングコントローラー -->
-        <div class="bottom-controls">
-            <!-- リストボタン -->
-            <button class="control-btn" onclick="openModal()">
-                <div class="btn-label-group">
-                    <svg>
-                        <use href="#icon-list"></use>
-                    </svg>
-                    <span class="btn-label-text">一覧</span>
-                </div>
-            </button>
+        <!-- サイドナビゲーション (左) -->
+        <button class="side-nav-btn side-nav-left" onclick="goPrev()" aria-label="前のコンテンツ">
+            <svg>
+                <use href="#icon-prev"></use>
+            </svg>
+        </button>
 
-            <div class="separator"></div>
+        <!-- サイドナビゲーション (右) -->
+        <button class="side-nav-btn side-nav-right" onclick="goNext()" aria-label="次のコンテンツ">
+            <svg>
+                <use href="#icon-next"></use>
+            </svg>
+        </button>
 
-            <!-- 前へ -->
-            <button class="control-btn" onclick="goPrev()">
-                <svg>
-                    <use href="#icon-prev"></use>
-                </svg>
-            </button>
-
-            <!-- 次へ -->
-            <button class="control-btn" onclick="goNext()">
-                <svg>
-                    <use href="#icon-next"></use>
-                </svg>
-            </button>
-
-            <div class="separator"></div>
-
-            <!-- マップボタン -->
-            <button class="control-btn" onclick="goMap()">
-                <div class="btn-label-group">
-                    <svg>
-                        <use href="#icon-globe"></use>
-                    </svg>
-                    <span class="btn-label-text">地図</span>
-                </div>
-            </button>
-        </div>
     </div>
 
-    <!-- リスト選択モーダル -->
-    <div class="modal-overlay" id="list-modal" onclick="closeModal(event)">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title">表示データ選択</span>
-                <button class="modal-close" onclick="closeModal(event)">
-                    <svg style="width:24px;height:24px;fill:currentColor">
-                        <use href="#icon-close"></use>
-                    </svg>
-                </button>
-            </div>
-            <ul class="content-list" id="modal-list-container">
-                <!-- JSで生成 -->
-            </ul>
+    <!-- メニューパネル (コンパクト版) -->
+    <div id="menu-panel" class="menu-panel">
+        <div class="menu-header">
+            <button class="menu-close" onclick="closeMenu()">
+                <svg>
+                    <use href="#icon-close"></use>
+                </svg>
+            </button>
         </div>
+        <ul class="content-list" id="modal-list-container">
+            <!-- JSで生成 -->
+        </ul>
     </div>
 
     <script>
-        // コンテンツ定義
+        // ============================================
+        // コンテンツ一覧の設定
+        // ============================================
         const contentList = [
-            { url: "saganoseki01.html", label: "3Dデータ 1", type: "3d" },
-            { url: "saganoseki02.html", label: "3Dデータ 2", type: "3d" },
-            { url: "saganoseki03.html", label: "3Dデータ 3", type: "3d" },
-            { url: "saganoseki04.html", label: "3Dデータ 4", type: "3d" },
-            { url: "https://ion.cesium.com/stories/viewer/?id=e09c2cee-167b-4e05-a6cb-7d1d77fb4846", label: "3Dマップ (Cesium)", type: "map" }
+            { url: "saganoseki01.html", label: "20251119", type: "空撮" },
+            { url: "saganoseki02.html", label: "20251119", type: "空撮" },
+            { url: "saganoseki03.html", label: "20251128", type: "地上" },
+            { url: "saganoseki04.html", label: "20251217", type: "空撮" },
+            { url: "saganoseki05.html", label: "20251225", type: "地上" },
+            { url: "https://ion.cesium.com/stories/viewer/?id=e09c2cee-167b-4e05-a6cb-7d1d77fb4846", label: "3Dマップ", type: "map" }
         ];
+        // ============================================
 
         const wrapper = document.getElementById('content-wrapper');
         const listContainer = document.getElementById('modal-list-container');
-        const modal = document.getElementById('list-modal');
+        const menuPanel = document.getElementById('menu-panel');
+        const btnToggle = document.getElementById('btn-toggle-menu');
 
         let currentIndex = 0;
 
-        // 初期化
         function init() {
-            // URLパラメータ取得
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
             if (tabParam !== null && !isNaN(tabParam)) {
@@ -472,32 +473,38 @@
 
                 li.innerHTML = `
                     <svg class="item-icon"><use href="${iconId}"></use></svg>
+                    <span class="item-type">${item.type}</span>
                     <span class="item-text">${item.label}</span>
                 `;
                 listContainer.appendChild(li);
             });
 
             renderContent(currentIndex);
+
+            document.addEventListener('click', (event) => {
+                const isClickInside = menuPanel.contains(event.target);
+                const isClickButton = btnToggle.contains(event.target);
+
+                if (menuPanel.classList.contains('open') && !isClickInside && !isClickButton) {
+                    closeMenu();
+                }
+            });
         }
 
-        // iframe描画
         function renderContent(index) {
             currentIndex = index;
-            wrapper.innerHTML = ''; // クリア
+            wrapper.innerHTML = '';
 
-            // リストのアクティブ表示更新
             const items = document.querySelectorAll('.content-item');
             items.forEach((item, i) => {
                 if (i === index) item.classList.add('active');
                 else item.classList.remove('active');
             });
 
-            // 履歴更新
             const url = new URL(window.location);
             url.searchParams.set('tab', index);
             window.history.pushState({ tab: index }, '', url);
 
-            // iframe生成
             setTimeout(() => {
                 const iframe = document.createElement('iframe');
                 iframe.src = contentList[index].url;
@@ -507,44 +514,41 @@
             }, 50);
         }
 
-        // 選択実行
         function selectContent(index) {
             renderContent(index);
-            closeModal();
+            closeMenu();
         }
 
-        // マップへジャンプ（リストの最後）
-        function goMap() {
-            renderContent(contentList.length - 1);
-        }
-
-        // 前へ
         function goPrev() {
             let newIndex = currentIndex - 1;
             if (newIndex < 0) newIndex = contentList.length - 1;
             renderContent(newIndex);
         }
 
-        // 次へ
         function goNext() {
             let newIndex = currentIndex + 1;
             if (newIndex >= contentList.length) newIndex = 0;
             renderContent(newIndex);
         }
 
-        // モーダル操作
-        function openModal() {
-            modal.classList.add('open');
-        }
-
-        function closeModal(e) {
-            // オーバーレイクリックまたは×ボタンクリック時のみ閉じる
-            if (!e || e.target === modal || e.currentTarget === e.target || e.target.closest('.modal-close')) {
-                modal.classList.remove('open');
+        function toggleMenu() {
+            if (menuPanel.classList.contains('open')) {
+                closeMenu();
+            } else {
+                openMenu();
             }
         }
 
-        // ブラウザバック対応
+        function openMenu() {
+            menuPanel.classList.add('open');
+            btnToggle.classList.add('active');
+        }
+
+        function closeMenu() {
+            menuPanel.classList.remove('open');
+            btnToggle.classList.remove('active');
+        }
+
         window.addEventListener('popstate', () => {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
