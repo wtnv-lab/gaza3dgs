@@ -519,6 +519,7 @@
         const listContainer = document.getElementById('modal-list-container');
         const menuPanel = document.getElementById('menu-panel');
         const btnToggle = document.getElementById('btn-toggle-menu');
+        let contentFrame = null;
 
         let currentIndex = 0;
 
@@ -529,6 +530,11 @@
                 currentIndex = parseInt(tabParam, 10);
             }
             if (currentIndex < 0 || currentIndex >= contentList.length) currentIndex = 0;
+
+            contentFrame = document.createElement('iframe');
+            contentFrame.setAttribute('allowfullscreen', 'true');
+            contentFrame.setAttribute('allow', 'geolocation; microphone; camera; gyroscope; accelerometer');
+            wrapper.appendChild(contentFrame);
 
             // リスト生成
             contentList.forEach((item, index) => {
@@ -569,7 +575,6 @@
 
         function renderContent(index) {
             currentIndex = index;
-            wrapper.innerHTML = '';
 
             const items = document.querySelectorAll('.content-item');
             items.forEach((item, i) => {
@@ -580,14 +585,11 @@
             const url = new URL(window.location);
             url.searchParams.set('tab', index);
             window.history.pushState({ tab: index }, '', url);
-
-            setTimeout(() => {
-                const iframe = document.createElement('iframe');
-                iframe.src = contentList[index].url;
-                iframe.setAttribute('allowfullscreen', 'true');
-                iframe.setAttribute('allow', 'geolocation; microphone; camera; gyroscope; accelerometer');
-                wrapper.appendChild(iframe);
-            }, 50);
+            const nextSrc = contentList[index].url;
+            if (contentFrame && contentFrame.dataset.currentSrc !== nextSrc) {
+                contentFrame.src = nextSrc;
+                contentFrame.dataset.currentSrc = nextSrc;
+            }
         }
 
         function selectContent(index) {
