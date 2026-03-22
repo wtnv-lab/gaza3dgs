@@ -29,7 +29,7 @@
             "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
             "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
             "@mkkellogg/gaussian-splats-3d": "https://unpkg.com/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js",
-            "spz-js/spz-loader": "https://unpkg.com/spz-js@1.2.5/dist/spz-loader.js"
+            "fflate": "https://unpkg.com/fflate@0.8.2/esm/browser.js"
         }
     }
     </script>
@@ -730,7 +730,7 @@
         import * as THREE from "three";
         import { OrbitControls } from "three/addons/controls/OrbitControls.js";
         import * as GaussianSplats3D from "@mkkellogg/gaussian-splats-3d";
-        import { loadSpz } from "spz-js/spz-loader";
+        import { gunzipSync } from "fflate";
 
         const LOOP_DURATION_SECONDS = 26;
         const FOV_MULTIPLIER = 0.96;
@@ -743,6 +743,11 @@
         const LOADING_PIXEL_RATIO = 0.75;
         const AUTOPLAY_START_DELAY_MS = 500;
         const PATH_SAMPLE_MULTIPLIER = 3;
+        const SPZ_MAGIC = 0x5053474e;
+        const FLAG_ANTIALIASED = 0x1;
+        const SPZ_HEADER_SIZE = 16;
+        const SPZ_COLOR_SCALE = 0.15;
+        const SPZ_MAX_POINTS = 10000000;
 
         const scenes = [
             {
@@ -922,6 +927,173 @@
 
         function sigmoid(value) {
             return 1 / (1 + Math.exp(-value));
+        }
+
+        function inverseSigmoid(value) {
+            return Math.log(value / (1 - value));
+        }
+
+        function dimForDegree(degree) {
+            switch (degree) {
+                case 0: return 0;
+                case 1: return 3;
+                case 2: return 8;
+                case 3: return 15;
+                default:
+                    throw new Error(`Unsupported SPZ SH degree: ${degree}`);
+            }
+        }
+
+        function halfToFloat(value) {
+            const sign = (value >> 15) & 0x1;
+            const exponent = (value >> 10) & 0x1f;
+            const mantissa = value & 0x3ff;
+            const signMultiplier = sign === 1 ? -1 : 1;
+
+            if (exponent === 0) {
+                return signMultiplier * Math.pow(2, -14) * mantissa / 1024;
+            }
+            if (exponent === 31) {
+                return mantissa !== 0 ? Number.NaN : signMultiplier * Number.POSITIVE_INFINITY;
+            }
+            return signMultiplier * Math.pow(2, exponent - 15) * (1 + mantissa / 1024);
+        }
+
+        function deserializePackedGaussians(buffer) {
+            if (buffer.byteLength < SPZ_HEADER_SIZE) {
+                throw new Error("SPZ file is too small.");
+            }
+
+            const view = new DataView(buffer);
+            const magic = view.getUint32(0, true);
+            const version = view.getUint32(4, true);
+            const numPoints = view.getUint32(8, true);
+            const shDegree = view.getUint8(12);
+            const fractionalBits = view.getUint8(13);
+            const flags = view.getUint8(14);
+
+            if (magic !== SPZ_MAGIC) {
+                throw new Error("SPZ header not found.");
+            }
+            if (version < 1 || version > 2) {
+                throw new Error(`Unsupported SPZ version: ${version}`);
+            }
+            if (numPoints > SPZ_MAX_POINTS) {
+                throw new Error(`SPZ point count is too large: ${numPoints}`);
+            }
+
+            const shDim = dimForDegree(shDegree);
+            const usesFloat16 = version === 1;
+            const positionsLength = numPoints * 3 * (usesFloat16 ? 2 : 3);
+            const alphasLength = numPoints;
+            const colorsLength = numPoints * 3;
+            const scalesLength = numPoints * 3;
+            const rotationsLength = numPoints * 3;
+            const shLength = numPoints * shDim * 3;
+            const expectedLength = SPZ_HEADER_SIZE + positionsLength + alphasLength + colorsLength + scalesLength + rotationsLength + shLength;
+
+            if (buffer.byteLength !== expectedLength) {
+                throw new Error(`SPZ buffer size mismatch: expected ${expectedLength}, got ${buffer.byteLength}`);
+            }
+
+            const source = new Uint8Array(buffer);
+            let offset = SPZ_HEADER_SIZE;
+            const readSection = (length) => {
+                const slice = source.slice(offset, offset + length);
+                offset += length;
+                return slice;
+            };
+
+            return {
+                numPoints,
+                shDegree,
+                fractionalBits,
+                antialiased: (flags & FLAG_ANTIALIASED) !== 0,
+                positions: readSection(positionsLength),
+                alphas: readSection(alphasLength),
+                colors: readSection(colorsLength),
+                scales: readSection(scalesLength),
+                rotations: readSection(rotationsLength),
+                sh: readSection(shLength)
+            };
+        }
+
+        function unpackGaussians(packed) {
+            const numPoints = packed.numPoints;
+            const shDim = dimForDegree(packed.shDegree);
+            const usesFloat16 = packed.positions.length === numPoints * 3 * 2;
+
+            const cloud = {
+                numPoints,
+                shDegree: packed.shDegree,
+                antialiased: packed.antialiased,
+                positions: new Float32Array(numPoints * 3),
+                scales: new Float32Array(numPoints * 3),
+                rotations: new Float32Array(numPoints * 4),
+                alphas: new Float32Array(numPoints),
+                colors: new Float32Array(numPoints * 3),
+                sh: new Float32Array(numPoints * shDim * 3)
+            };
+
+            if (usesFloat16) {
+                const halfData = new Uint16Array(packed.positions.buffer, packed.positions.byteOffset, numPoints * 3);
+                for (let i = 0; i < numPoints * 3; i += 1) {
+                    cloud.positions[i] = halfToFloat(halfData[i]);
+                }
+            } else {
+                const scale = 1 / (1 << packed.fractionalBits);
+                for (let i = 0; i < numPoints * 3; i += 1) {
+                    let fixed32 = packed.positions[i * 3 + 0];
+                    fixed32 |= packed.positions[i * 3 + 1] << 8;
+                    fixed32 |= packed.positions[i * 3 + 2] << 16;
+                    fixed32 |= (fixed32 & 0x800000) ? 0xff000000 : 0;
+                    cloud.positions[i] = fixed32 * scale;
+                }
+            }
+
+            for (let i = 0; i < numPoints * 3; i += 1) {
+                cloud.scales[i] = packed.scales[i] / 16 - 10;
+                cloud.colors[i] = ((packed.colors[i] / 255) - 0.5) / SPZ_COLOR_SCALE;
+            }
+
+            for (let i = 0; i < numPoints; i += 1) {
+                const rotationIndex = i * 3;
+                const quaternionIndex = i * 4;
+                const x = packed.rotations[rotationIndex + 0] / 127.5 - 1;
+                const y = packed.rotations[rotationIndex + 1] / 127.5 - 1;
+                const z = packed.rotations[rotationIndex + 2] / 127.5 - 1;
+                const w = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
+
+                cloud.rotations[quaternionIndex + 0] = x;
+                cloud.rotations[quaternionIndex + 1] = y;
+                cloud.rotations[quaternionIndex + 2] = z;
+                cloud.rotations[quaternionIndex + 3] = w;
+                cloud.alphas[i] = inverseSigmoid(packed.alphas[i] / 255);
+            }
+
+            for (let i = 0; i < packed.sh.length; i += 1) {
+                cloud.sh[i] = (packed.sh[i] - 128) / 128;
+            }
+
+            return cloud;
+        }
+
+        function loadSpzCloudFromBuffer(compressedBuffer) {
+            let decompressed;
+            try {
+                decompressed = gunzipSync(new Uint8Array(compressedBuffer));
+            } catch (error) {
+                throw new Error(`SPZ gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+
+            const packed = deserializePackedGaussians(
+                decompressed.buffer.slice(
+                    decompressed.byteOffset,
+                    decompressed.byteOffset + decompressed.byteLength
+                )
+            );
+
+            return unpackGaussians(packed);
         }
 
         function resetIframe() {
@@ -1147,7 +1319,7 @@
 
         async function loadSpzAsSplatObjectUrl(url, onProgress) {
             const spzBuffer = await fetchAsArrayBuffer(url, (ratio) => onProgress?.(ratio * 0.55));
-            const cloud = await loadSpz(new Uint8Array(spzBuffer));
+            const cloud = loadSpzCloudFromBuffer(spzBuffer);
             onProgress?.(0.8);
             const splatBuffer = serializeSplatFromSpzCloud(cloud);
             onProgress?.(1);
