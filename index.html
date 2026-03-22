@@ -893,6 +893,20 @@
             return scenes[state.currentIndex];
         }
 
+        function getSceneIndexFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const sceneNumber = Number.parseInt(params.get("scene") ?? "", 10);
+            if (!Number.isFinite(sceneNumber)) return 0;
+            const index = sceneNumber - 1;
+            return index >= 0 && index < scenes.length ? index : 0;
+        }
+
+        function updateSceneUrl(index) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("scene", String(index + 1));
+            window.history.replaceState({ scene: index + 1 }, "", url);
+        }
+
         function clamp01(value) {
             return Math.max(0, Math.min(value, 1));
         }
@@ -1621,6 +1635,7 @@
         function changeScene(index) {
             if (index < 0 || index >= scenes.length) return;
             state.currentIndex = index;
+            updateSceneUrl(index);
             const scene = currentScene();
             dom.infoTitle.textContent = scene.title;
             dom.infoDescription.textContent = scene.description;
@@ -1779,7 +1794,7 @@
 
         setupUi();
         renderLoop(0);
-        changeScene(0);
+        changeScene(getSceneIndexFromUrl());
     </script>
 </body>
 
