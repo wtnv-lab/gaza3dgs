@@ -68,16 +68,22 @@
                 linear-gradient(180deg, #000000 0%, #000000 100%);
             color: var(--text);
             overflow: hidden;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
         .app-container {
             height: 100dvh;
             position: relative;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
         .viewer-wrapper {
             position: relative;
             height: 100%;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
         #content-host,
@@ -830,8 +836,6 @@
 
         const state = {
             currentIndex: 0,
-            touchStartX: 0,
-            touchStartY: 0,
             playing: false,
             frameCursor: 0,
             animationTime: 0,
@@ -1760,21 +1764,6 @@
                     navigate(event.key === "ArrowLeft" ? -1 : 1);
                 }
             });
-
-            dom.viewerWrapper.addEventListener("touchstart", (event) => {
-                state.touchStartX = event.changedTouches[0].screenX;
-                state.touchStartY = event.changedTouches[0].screenY;
-            }, { passive: true });
-
-            dom.viewerWrapper.addEventListener("touchend", (event) => {
-                const touchEndX = event.changedTouches[0].screenX;
-                const touchEndY = event.changedTouches[0].screenY;
-                const deltaX = touchEndX - state.touchStartX;
-                const deltaY = touchEndY - state.touchStartY;
-                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-                    navigate(deltaX < 0 ? 1 : -1);
-                }
-            }, { passive: true });
 
             window.addEventListener("resize", () => {
                 if (!camera || !renderer) return;
