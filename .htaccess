@@ -1,0 +1,18 @@
+AddDefaultCharset UTF-8
+
+AddType application/octet-stream .spz
+AddType application/ply .ply
+
+<IfModule mod_brotli.c>
+    SetEnvIfNoCase Request_URI "\.(?:spz|ply)$" no-brotli dont-vary
+</IfModule>
+
+<IfModule mod_deflate.c>
+    SetEnvIfNoCase Request_URI "\.(?:spz|ply)$" no-gzip dont-vary
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(spz|ply)$">
+        Header unset Content-Encoding
+    </FilesMatch>
+</IfModule>
