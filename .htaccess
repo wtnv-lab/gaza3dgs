@@ -2,6 +2,8 @@ AddDefaultCharset UTF-8
 
 AddType application/octet-stream .spz
 AddType application/ply .ply
+AddType application/json .json
+AddType application/javascript .js
 
 <IfModule mod_brotli.c>
     SetEnvIfNoCase Request_URI "\.(?:spz|ply)$" no-brotli dont-vary
@@ -21,10 +23,18 @@ AddType application/ply .ply
     <FilesMatch "\.ply$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
+    <FilesMatch "\.json$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.js$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
 </IfModule>
 
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType application/octet-stream "access plus 1 year"
     ExpiresByType application/ply "access plus 1 year"
+    ExpiresByType application/json "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
 </IfModule>
