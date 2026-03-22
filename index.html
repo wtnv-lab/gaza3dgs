@@ -1079,17 +1079,20 @@
         }
 
         function loadSpzCloudFromBuffer(compressedBuffer) {
-            let decompressed;
-            try {
-                decompressed = gunzipSync(new Uint8Array(compressedBuffer));
-            } catch (error) {
-                throw new Error(`SPZ gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`);
-            }
+            const bytes = new Uint8Array(compressedBuffer);
+            const hasGzipHeader = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+            const payload = hasGzipHeader ? (() => {
+                try {
+                    return gunzipSync(bytes);
+                } catch (error) {
+                    throw new Error(`SPZ gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`);
+                }
+            })() : bytes;
 
             const packed = deserializePackedGaussians(
-                decompressed.buffer.slice(
-                    decompressed.byteOffset,
-                    decompressed.byteOffset + decompressed.byteLength
+                payload.buffer.slice(
+                    payload.byteOffset,
+                    payload.byteOffset + payload.byteLength
                 )
             );
 
