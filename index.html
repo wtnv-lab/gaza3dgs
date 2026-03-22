@@ -885,6 +885,9 @@
         let camera = null;
         let controls = null;
         let viewer = null;
+        const arrayBufferCache = new Map();
+        const splatObjectUrlCache = new Map();
+        const frameCache = new Map();
 
         function currentScene() {
             return scenes[state.currentIndex];
@@ -1161,7 +1164,9 @@
 
         function disposeRuntime() {
             if (state.activeSplatObjectUrl) {
-                URL.revokeObjectURL(state.activeSplatObjectUrl);
+                if (![...splatObjectUrlCache.values()].includes(state.activeSplatObjectUrl)) {
+                    URL.revokeObjectURL(state.activeSplatObjectUrl);
+                }
                 state.activeSplatObjectUrl = null;
             }
             if (viewer) {
@@ -1249,7 +1254,12 @@
         }
 
         async function fetchAsArrayBuffer(url, onProgress) {
-            const response = await fetch(url);
+            if (arrayBufferCache.has(url)) {
+                onProgress?.(1);
+                return arrayBufferCache.get(url).slice(0);
+            }
+
+            const response = await fetch(url, { cache: "force-cache" });
             if (!response.ok) {
                 throw new Error(`Failed to fetch asset: ${response.status}`);
             }
@@ -1257,6 +1267,7 @@
             if (!response.body || !total) {
                 const buffer = await response.arrayBuffer();
                 onProgress?.(1);
+                arrayBufferCache.set(url, buffer.slice(0));
                 return buffer;
             }
             const reader = response.body.getReader();
@@ -1276,7 +1287,9 @@
                 offset += chunk.byteLength;
             }
             onProgress?.(1);
-            return merged.buffer;
+            const buffer = merged.buffer;
+            arrayBufferCache.set(url, buffer.slice(0));
+            return buffer;
         }
 
         function serializeSplatFromSpzCloud(cloud) {
@@ -1321,12 +1334,19 @@
         }
 
         async function loadSpzAsSplatObjectUrl(url, onProgress) {
+            if (splatObjectUrlCache.has(url)) {
+                onProgress?.(1);
+                return splatObjectUrlCache.get(url);
+            }
+
             const spzBuffer = await fetchAsArrayBuffer(url, (ratio) => onProgress?.(ratio * 0.55));
             const cloud = loadSpzCloudFromBuffer(spzBuffer);
             onProgress?.(0.8);
             const splatBuffer = serializeSplatFromSpzCloud(cloud);
             onProgress?.(1);
-            return URL.createObjectURL(new Blob([splatBuffer], { type: "application/octet-stream" }));
+            const objectUrl = URL.createObjectURL(new Blob([splatBuffer], { type: "application/octet-stream" }));
+            splatObjectUrlCache.set(url, objectUrl);
+            return objectUrl;
         }
 
         function makeKirTransform(position, rotationRows) {
@@ -1359,11 +1379,25 @@
         }
 
         async function loadFrames(cameraPath) {
-            const response = await fetch(cameraPath);
+            if (frameCache.has(cameraPath)) {
+                return frameCache.get(cameraPath).map((frame) => ({
+                    position: frame.position.clone(),
+                    target: frame.target.clone(),
+                    fy: frame.fy
+                }));
+            }
+
+            const response = await fetch(cameraPath, { cache: "force-cache" });
             if (!response.ok) {
                 throw new Error(`Failed to fetch camera path: ${response.status}`);
             }
-            return parseFrames(await response.json());
+            const frames = parseFrames(await response.json());
+            frameCache.set(cameraPath, frames.map((frame) => ({
+                position: frame.position.clone(),
+                target: frame.target.clone(),
+                fy: frame.fy
+            })));
+            return frames;
         }
 
         function updateProjection(frame) {
