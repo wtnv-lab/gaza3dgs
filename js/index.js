@@ -1,0 +1,1426 @@
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import * as GaussianSplats3D from "@mkkellogg/gaussian-splats-3d";
+import { gunzipSync } from "fflate";
+
+const APP_ROOT_URL = new URL("../", import.meta.url);
+
+const LOOP_DURATION_SECONDS = 26;
+const FOV_MULTIPLIER = 0.96;
+const CAMERA_SMOOTHNESS = 10;
+const RETURN_SPRING_STRENGTH = 6;
+const RETURN_COMPLETE_EPSILON = 0.01;
+const INTERACTION_END_DELAY_MS = 220;
+const IS_COARSE_POINTER = window.matchMedia("(pointer: coarse)").matches;
+const IS_LOW_POWER_DEVICE = IS_COARSE_POINTER || (navigator.hardwareConcurrency || 4) <= 4;
+const TARGET_FPS = IS_LOW_POWER_DEVICE ? 30 : 45;
+const MAX_PIXEL_RATIO = IS_LOW_POWER_DEVICE ? 0.9 : 1.0;
+const LOADING_PIXEL_RATIO = 0.66;
+const AUTOPLAY_START_DELAY_MS = 200;
+const PATH_SAMPLE_MULTIPLIER = 2;
+const FOV_UPDATE_EPSILON = 0.02;
+const SPZ_MAGIC = 0x5053474e;
+const FLAG_ANTIALIASED = 0x1;
+const SPZ_HEADER_SIZE = 16;
+const SPZ_COLOR_SCALE = 0.15;
+const SPZ_MAX_POINTS = 10000000;
+const SPZ_WORKER_SOURCE = `
+    import { gunzipSync } from "https://unpkg.com/fflate@0.8.2/esm/browser.js";
+
+    const SPZ_MAGIC = ${SPZ_MAGIC};
+    const FLAG_ANTIALIASED = ${FLAG_ANTIALIASED};
+    const SPZ_HEADER_SIZE = ${SPZ_HEADER_SIZE};
+    const SPZ_COLOR_SCALE = ${SPZ_COLOR_SCALE};
+    const SPZ_MAX_POINTS = ${SPZ_MAX_POINTS};
+
+    function clampByte(value) {
+        return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function sigmoid(value) {
+        return 1 / (1 + Math.exp(-value));
+    }
+
+    function inverseSigmoid(value) {
+        return Math.log(value / (1 - value));
+    }
+
+    function dimForDegree(degree) {
+        switch (degree) {
+            case 0: return 0;
+            case 1: return 3;
+            case 2: return 8;
+            case 3: return 15;
+            default:
+                throw new Error(\`Unsupported SPZ SH degree: \${degree}\`);
+        }
+    }
+
+    function halfToFloat(value) {
+        const sign = (value >> 15) & 0x1;
+        const exponent = (value >> 10) & 0x1f;
+        const mantissa = value & 0x3ff;
+        const signMultiplier = sign === 1 ? -1 : 1;
+
+        if (exponent === 0) {
+            return signMultiplier * Math.pow(2, -14) * mantissa / 1024;
+        }
+        if (exponent === 31) {
+            return mantissa !== 0 ? Number.NaN : signMultiplier * Number.POSITIVE_INFINITY;
+        }
+        return signMultiplier * Math.pow(2, exponent - 15) * (1 + mantissa / 1024);
+    }
+
+    function deserializePackedGaussians(buffer) {
+        if (buffer.byteLength < SPZ_HEADER_SIZE) {
+            throw new Error("SPZ file is too small.");
+        }
+
+        const view = new DataView(buffer);
+        const magic = view.getUint32(0, true);
+        const version = view.getUint32(4, true);
+        const numPoints = view.getUint32(8, true);
+        const shDegree = view.getUint8(12);
+        const fractionalBits = view.getUint8(13);
+        const flags = view.getUint8(14);
+
+        if (magic !== SPZ_MAGIC) {
+            throw new Error("SPZ header not found.");
+        }
+        if (version < 1 || version > 2) {
+            throw new Error(\`Unsupported SPZ version: \${version}\`);
+        }
+        if (numPoints > SPZ_MAX_POINTS) {
+            throw new Error(\`SPZ point count is too large: \${numPoints}\`);
+        }
+
+        const shDim = dimForDegree(shDegree);
+        const usesFloat16 = version === 1;
+        const positionsLength = numPoints * 3 * (usesFloat16 ? 2 : 3);
+        const alphasLength = numPoints;
+        const colorsLength = numPoints * 3;
+        const scalesLength = numPoints * 3;
+        const rotationsLength = numPoints * 3;
+        const shLength = numPoints * shDim * 3;
+        const expectedLength = SPZ_HEADER_SIZE + positionsLength + alphasLength + colorsLength + scalesLength + rotationsLength + shLength;
+
+        if (buffer.byteLength !== expectedLength) {
+            throw new Error(\`SPZ buffer size mismatch: expected \${expectedLength}, got \${buffer.byteLength}\`);
+        }
+
+        const source = new Uint8Array(buffer);
+        let offset = SPZ_HEADER_SIZE;
+        const readSection = (length) => {
+            const slice = source.slice(offset, offset + length);
+            offset += length;
+            return slice;
+        };
+
+        return {
+            numPoints,
+            shDegree,
+            fractionalBits,
+            antialiased: (flags & FLAG_ANTIALIASED) !== 0,
+            positions: readSection(positionsLength),
+            alphas: readSection(alphasLength),
+            colors: readSection(colorsLength),
+            scales: readSection(scalesLength),
+            rotations: readSection(rotationsLength),
+            sh: readSection(shLength)
+        };
+    }
+
+    function unpackGaussians(packed) {
+        const numPoints = packed.numPoints;
+        const shDim = dimForDegree(packed.shDegree);
+        const usesFloat16 = packed.positions.length === numPoints * 3 * 2;
+
+        const cloud = {
+            numPoints,
+            shDegree: packed.shDegree,
+            antialiased: packed.antialiased,
+            positions: new Float32Array(numPoints * 3),
+            scales: new Float32Array(numPoints * 3),
+            rotations: new Float32Array(numPoints * 4),
+            alphas: new Float32Array(numPoints),
+            colors: new Float32Array(numPoints * 3),
+            sh: new Float32Array(numPoints * shDim * 3)
+        };
+
+        if (usesFloat16) {
+            const halfData = new Uint16Array(packed.positions.buffer, packed.positions.byteOffset, numPoints * 3);
+            for (let i = 0; i < numPoints * 3; i += 1) {
+                cloud.positions[i] = halfToFloat(halfData[i]);
+            }
+        } else {
+            const scale = 1 / (1 << packed.fractionalBits);
+            for (let i = 0; i < numPoints * 3; i += 1) {
+                let fixed32 = packed.positions[i * 3 + 0];
+                fixed32 |= packed.positions[i * 3 + 1] << 8;
+                fixed32 |= packed.positions[i * 3 + 2] << 16;
+                fixed32 |= (fixed32 & 0x800000) ? 0xff000000 : 0;
+                cloud.positions[i] = fixed32 * scale;
+            }
+        }
+
+        for (let i = 0; i < numPoints * 3; i += 1) {
+            cloud.scales[i] = packed.scales[i] / 16 - 10;
+            cloud.colors[i] = ((packed.colors[i] / 255) - 0.5) / SPZ_COLOR_SCALE;
+        }
+
+        for (let i = 0; i < numPoints; i += 1) {
+            const rotationIndex = i * 3;
+            const quaternionIndex = i * 4;
+            const x = packed.rotations[rotationIndex + 0] / 127.5 - 1;
+            const y = packed.rotations[rotationIndex + 1] / 127.5 - 1;
+            const z = packed.rotations[rotationIndex + 2] / 127.5 - 1;
+            const w = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
+
+            cloud.rotations[quaternionIndex + 0] = x;
+            cloud.rotations[quaternionIndex + 1] = y;
+            cloud.rotations[quaternionIndex + 2] = z;
+            cloud.rotations[quaternionIndex + 3] = w;
+            cloud.alphas[i] = inverseSigmoid(packed.alphas[i] / 255);
+        }
+
+        for (let i = 0; i < packed.sh.length; i += 1) {
+            cloud.sh[i] = (packed.sh[i] - 128) / 128;
+        }
+
+        return cloud;
+    }
+
+    function loadSpzCloudFromBuffer(compressedBuffer) {
+        const bytes = new Uint8Array(compressedBuffer);
+        const hasGzipHeader = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+        const payload = hasGzipHeader ? (() => {
+            try {
+                return gunzipSync(bytes);
+            } catch (error) {
+                throw new Error(\`SPZ gzip decompression failed: \${error instanceof Error ? error.message : String(error)}\`);
+            }
+        })() : bytes;
+
+        const packed = deserializePackedGaussians(
+            payload.buffer.slice(
+                payload.byteOffset,
+                payload.byteOffset + payload.byteLength
+            )
+        );
+
+        return unpackGaussians(packed);
+    }
+
+    function serializeSplatFromSpzCloud(cloud) {
+        const rowLength = 32;
+        const count = cloud.numPoints;
+        const SH_C0 = 0.28209479177387814;
+        const buffer = new ArrayBuffer(rowLength * count);
+        const floatView = new Float32Array(buffer);
+        const byteView = new Uint8Array(buffer);
+
+        for (let index = 0; index < count; index += 1) {
+            const floatBase = index * 8;
+            const posBase = index * 3;
+            const rotBase = index * 4;
+            const byteBase = index * rowLength;
+
+            floatView[floatBase + 0] = cloud.positions[posBase + 0];
+            floatView[floatBase + 1] = cloud.positions[posBase + 1];
+            floatView[floatBase + 2] = cloud.positions[posBase + 2];
+            floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
+            floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
+            floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
+
+            byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
+            byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
+            byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
+            byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
+
+            const qx = cloud.rotations[rotBase + 0];
+            const qy = cloud.rotations[rotBase + 1];
+            const qz = cloud.rotations[rotBase + 2];
+            const qw = cloud.rotations[rotBase + 3];
+            const qLength = Math.hypot(qw, qx, qy, qz) || 1;
+
+            byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
+            byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
+            byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
+            byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+        }
+
+        return buffer;
+    }
+
+    self.onmessage = (event) => {
+        const { id, compressedBuffer } = event.data;
+        try {
+            const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+            const splatBuffer = serializeSplatFromSpzCloud(cloud);
+            self.postMessage({ id, splatBuffer }, [splatBuffer]);
+        } catch (error) {
+            self.postMessage({
+                id,
+                error: error instanceof Error ? error.message : String(error)
+            });
+        }
+    };
+`;
+
+const scenes = [
+    {
+        title: "People in Al Shifa Courtyard",
+        description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.",
+        type: "spz",
+        assetPath: "./ply_spz/people.spz",
+        cameraPath: "./ply_spz/cameras/people.json",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Al Shifa Hospital Courtyard",
+        description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.",
+        type: "spz",
+        assetPath: "./ply_spz/courtyard.spz",
+        cameraPath: "./ply_spz/cameras/courtyard.json",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Destroyed Entrance of Al Shifa Hospital",
+        description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.",
+        type: "spz",
+        assetPath: "./ply_spz/entrance.spz",
+        cameraPath: "./ply_spz/cameras/entrance.json",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Newborns Huddled for Care at Al Shifa",
+        description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+        type: "iframe",
+        src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Premature Babies in Improvised Care",
+        description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+        type: "iframe",
+        src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Abandoned Nursery at Al Shifa Hospital",
+        description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.",
+        type: "iframe",
+        src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+        credit: "© UTokyo & Al Jazeera"
+    },
+    {
+        title: "Destroyed UN Vehicle in Bureij Camp",
+        description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.",
+        type: "spz",
+        assetPath: "./ply_spz/un.spz",
+        cameraPath: "./ply_spz/cameras/un.json",
+        credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>'
+    },
+    {
+        title: "Destroyed Cityscape in Khan Yunis",
+        description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.",
+        type: "spz",
+        assetPath: "./ply_spz/khan_yunis.spz",
+        cameraPath: "./ply_spz/cameras/khan_yunis.json",
+        credit: "© UTokyo & UNRWA"
+    },
+    {
+        title: "Rubble and Ruins in Khan Yunis",
+        description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.",
+        type: "spz",
+        assetPath: "./ply_spz/khan_yunis2.spz",
+        cameraPath: "./ply_spz/cameras/khan_yunis2.json",
+        credit: "© UTokyo & UNRWA"
+    },
+    {
+        title: "Japan-Funded Overpass in Khan Yunis",
+        description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.",
+        type: "iframe",
+        src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false",
+        credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>'
+    }
+];
+
+const state = {
+    currentIndex: 0,
+    playing: false,
+    frameCursor: 0,
+    animationTime: 0,
+    duration: LOOP_DURATION_SECONDS,
+    frames: [],
+    sampledPath: null,
+    desiredCameraPosition: new THREE.Vector3(0, 0, 3),
+    desiredControlTarget: new THREE.Vector3(0, 0, 0),
+    desiredFov: 65,
+    lastTick: 0,
+    lastRenderTime: 0,
+    loadToken: 0,
+    activeSplatObjectUrl: null,
+    draggingSlider: false,
+    userInteracting: false,
+    returningToPath: false,
+    interactionEndTimer: null,
+    playbackUiDirty: true,
+    renderRequested: true
+};
+
+const dom = {
+    viewerWrapper: document.querySelector(".viewer-wrapper"),
+    contentHost: document.getElementById("content-host"),
+    iframeTarget: document.getElementById("iframe-target"),
+    viewerTarget: document.getElementById("viewer-target"),
+    viewerLoader: document.getElementById("viewer-loader"),
+    viewerLoaderText: document.getElementById("viewer-loader-text"),
+    viewerLoaderFill: document.getElementById("viewer-loader-fill"),
+    viewerLoaderProgress: document.getElementById("viewer-loader-progress"),
+    infoBox: document.getElementById("info-box"),
+    infoTitle: document.getElementById("info-title"),
+    infoDescription: document.getElementById("info-description"),
+    creditDisplay: document.getElementById("credit-display"),
+    contentButtonsWrapper: document.getElementById("content-buttons-wrapper"),
+    prevBtn: document.getElementById("prev-btn"),
+    nextBtn: document.getElementById("next-btn"),
+    mobilePrevBtn: document.getElementById("mobile-prev"),
+    mobileNextBtn: document.getElementById("mobile-next"),
+    sceneCounter: document.getElementById("scene-counter"),
+    listToggleBtn: document.getElementById("list-toggle-btn"),
+    infoToggleBtn: document.getElementById("info-toggle-btn"),
+    fullscreenBtn: document.getElementById("fullscreen-btn"),
+    listModal: document.getElementById("list-modal"),
+    listModalContent: document.getElementById("list-modal-content"),
+    listModalClose: document.getElementById("list-modal-close"),
+    playbackControls: document.getElementById("playback-controls"),
+    playbackToggle: document.getElementById("playback-toggle"),
+    playbackSlider: document.getElementById("playback-slider")
+};
+
+let renderer = null;
+let camera = null;
+let controls = null;
+let viewer = null;
+const arrayBufferCache = new Map();
+const splatObjectUrlCache = new Map();
+const frameCache = new Map();
+const spzSampleState = {
+    position: new THREE.Vector3(),
+    target: new THREE.Vector3(),
+    fov: 65
+};
+let spzWorker = null;
+let spzWorkerUrl = null;
+let spzWorkerTaskId = 0;
+const spzWorkerPending = new Map();
+
+function currentScene() {
+    return scenes[state.currentIndex];
+}
+
+function resolveAppUrl(path) {
+    return new URL(path, APP_ROOT_URL).href;
+}
+
+function getSceneIndexFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const sceneNumber = Number.parseInt(params.get("scene") ?? "", 10);
+    if (!Number.isFinite(sceneNumber)) return 0;
+    const index = sceneNumber - 1;
+    return index >= 0 && index < scenes.length ? index : 0;
+}
+
+function updateSceneUrl(index) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("scene", String(index + 1));
+    window.history.replaceState({ scene: index + 1 }, "", url);
+}
+
+function clamp01(value) {
+    return Math.max(0, Math.min(value, 1));
+}
+
+function markPlaybackUiDirty() {
+    state.playbackUiDirty = true;
+}
+
+function requestRender() {
+    state.renderRequested = true;
+}
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function sinusoidalInOut(value) {
+    return 0.5 * (1 - Math.sin(Math.PI * (0.5 - value)));
+}
+
+function smootherstep(value) {
+    const clamped = clamp01(value);
+    return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+}
+
+function bezierInterpolate(values, t) {
+    const work = values.slice();
+    for (let order = 1; order < values.length; order += 1) {
+        for (let i = 0; i < values.length - order; i += 1) {
+            work[i] = (1 - t) * work[i] + t * work[i + 1];
+        }
+    }
+    return work[0];
+}
+
+function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function clampByte(value) {
+    return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function sigmoid(value) {
+    return 1 / (1 + Math.exp(-value));
+}
+
+function inverseSigmoid(value) {
+    return Math.log(value / (1 - value));
+}
+
+function dimForDegree(degree) {
+    switch (degree) {
+        case 0: return 0;
+        case 1: return 3;
+        case 2: return 8;
+        case 3: return 15;
+        default:
+            throw new Error(`Unsupported SPZ SH degree: ${degree}`);
+    }
+}
+
+function halfToFloat(value) {
+    const sign = (value >> 15) & 0x1;
+    const exponent = (value >> 10) & 0x1f;
+    const mantissa = value & 0x3ff;
+    const signMultiplier = sign === 1 ? -1 : 1;
+
+    if (exponent === 0) {
+        return signMultiplier * Math.pow(2, -14) * mantissa / 1024;
+    }
+    if (exponent === 31) {
+        return mantissa !== 0 ? Number.NaN : signMultiplier * Number.POSITIVE_INFINITY;
+    }
+    return signMultiplier * Math.pow(2, exponent - 15) * (1 + mantissa / 1024);
+}
+
+function deserializePackedGaussians(buffer) {
+    if (buffer.byteLength < SPZ_HEADER_SIZE) {
+        throw new Error("SPZ file is too small.");
+    }
+
+    const view = new DataView(buffer);
+    const magic = view.getUint32(0, true);
+    const version = view.getUint32(4, true);
+    const numPoints = view.getUint32(8, true);
+    const shDegree = view.getUint8(12);
+    const fractionalBits = view.getUint8(13);
+    const flags = view.getUint8(14);
+
+    if (magic !== SPZ_MAGIC) {
+        throw new Error("SPZ header not found.");
+    }
+    if (version < 1 || version > 2) {
+        throw new Error(`Unsupported SPZ version: ${version}`);
+    }
+    if (numPoints > SPZ_MAX_POINTS) {
+        throw new Error(`SPZ point count is too large: ${numPoints}`);
+    }
+
+    const shDim = dimForDegree(shDegree);
+    const usesFloat16 = version === 1;
+    const positionsLength = numPoints * 3 * (usesFloat16 ? 2 : 3);
+    const alphasLength = numPoints;
+    const colorsLength = numPoints * 3;
+    const scalesLength = numPoints * 3;
+    const rotationsLength = numPoints * 3;
+    const shLength = numPoints * shDim * 3;
+    const expectedLength = SPZ_HEADER_SIZE + positionsLength + alphasLength + colorsLength + scalesLength + rotationsLength + shLength;
+
+    if (buffer.byteLength !== expectedLength) {
+        throw new Error(`SPZ buffer size mismatch: expected ${expectedLength}, got ${buffer.byteLength}`);
+    }
+
+    const source = new Uint8Array(buffer);
+    let offset = SPZ_HEADER_SIZE;
+    const readSection = (length) => {
+        const slice = source.slice(offset, offset + length);
+        offset += length;
+        return slice;
+    };
+
+    return {
+        numPoints,
+        shDegree,
+        fractionalBits,
+        antialiased: (flags & FLAG_ANTIALIASED) !== 0,
+        positions: readSection(positionsLength),
+        alphas: readSection(alphasLength),
+        colors: readSection(colorsLength),
+        scales: readSection(scalesLength),
+        rotations: readSection(rotationsLength),
+        sh: readSection(shLength)
+    };
+}
+
+function unpackGaussians(packed) {
+    const numPoints = packed.numPoints;
+    const shDim = dimForDegree(packed.shDegree);
+    const usesFloat16 = packed.positions.length === numPoints * 3 * 2;
+
+    const cloud = {
+        numPoints,
+        shDegree: packed.shDegree,
+        antialiased: packed.antialiased,
+        positions: new Float32Array(numPoints * 3),
+        scales: new Float32Array(numPoints * 3),
+        rotations: new Float32Array(numPoints * 4),
+        alphas: new Float32Array(numPoints),
+        colors: new Float32Array(numPoints * 3),
+        sh: new Float32Array(numPoints * shDim * 3)
+    };
+
+    if (usesFloat16) {
+        const halfData = new Uint16Array(packed.positions.buffer, packed.positions.byteOffset, numPoints * 3);
+        for (let i = 0; i < numPoints * 3; i += 1) {
+            cloud.positions[i] = halfToFloat(halfData[i]);
+        }
+    } else {
+        const scale = 1 / (1 << packed.fractionalBits);
+        for (let i = 0; i < numPoints * 3; i += 1) {
+            let fixed32 = packed.positions[i * 3 + 0];
+            fixed32 |= packed.positions[i * 3 + 1] << 8;
+            fixed32 |= packed.positions[i * 3 + 2] << 16;
+            fixed32 |= (fixed32 & 0x800000) ? 0xff000000 : 0;
+            cloud.positions[i] = fixed32 * scale;
+        }
+    }
+
+    for (let i = 0; i < numPoints * 3; i += 1) {
+        cloud.scales[i] = packed.scales[i] / 16 - 10;
+        cloud.colors[i] = ((packed.colors[i] / 255) - 0.5) / SPZ_COLOR_SCALE;
+    }
+
+    for (let i = 0; i < numPoints; i += 1) {
+        const rotationIndex = i * 3;
+        const quaternionIndex = i * 4;
+        const x = packed.rotations[rotationIndex + 0] / 127.5 - 1;
+        const y = packed.rotations[rotationIndex + 1] / 127.5 - 1;
+        const z = packed.rotations[rotationIndex + 2] / 127.5 - 1;
+        const w = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
+
+        cloud.rotations[quaternionIndex + 0] = x;
+        cloud.rotations[quaternionIndex + 1] = y;
+        cloud.rotations[quaternionIndex + 2] = z;
+        cloud.rotations[quaternionIndex + 3] = w;
+        cloud.alphas[i] = inverseSigmoid(packed.alphas[i] / 255);
+    }
+
+    for (let i = 0; i < packed.sh.length; i += 1) {
+        cloud.sh[i] = (packed.sh[i] - 128) / 128;
+    }
+
+    return cloud;
+}
+
+function loadSpzCloudFromBuffer(compressedBuffer) {
+    const bytes = new Uint8Array(compressedBuffer);
+    const hasGzipHeader = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    const payload = hasGzipHeader ? (() => {
+        try {
+            return gunzipSync(bytes);
+        } catch (error) {
+            throw new Error(`SPZ gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    })() : bytes;
+
+    const packed = deserializePackedGaussians(
+        payload.buffer.slice(
+            payload.byteOffset,
+            payload.byteOffset + payload.byteLength
+        )
+    );
+
+    return unpackGaussians(packed);
+}
+
+function serializeSplatFromSpzCloud(cloud) {
+    const rowLength = 32;
+    const count = cloud.numPoints;
+    const SH_C0 = 0.28209479177387814;
+    const buffer = new ArrayBuffer(rowLength * count);
+    const floatView = new Float32Array(buffer);
+    const byteView = new Uint8Array(buffer);
+
+    for (let index = 0; index < count; index += 1) {
+        const floatBase = index * 8;
+        const posBase = index * 3;
+        const rotBase = index * 4;
+        const byteBase = index * rowLength;
+
+        floatView[floatBase + 0] = cloud.positions[posBase + 0];
+        floatView[floatBase + 1] = cloud.positions[posBase + 1];
+        floatView[floatBase + 2] = cloud.positions[posBase + 2];
+        floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
+        floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
+        floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
+
+        byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
+        byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
+        byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
+        byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
+
+        const qx = cloud.rotations[rotBase + 0];
+        const qy = cloud.rotations[rotBase + 1];
+        const qz = cloud.rotations[rotBase + 2];
+        const qw = cloud.rotations[rotBase + 3];
+        const qLength = Math.hypot(qw, qx, qy, qz) || 1;
+
+        byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
+        byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
+        byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
+        byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+    }
+
+    return buffer;
+}
+
+function resetIframe() {
+    const oldIframe = dom.iframeTarget.firstChild;
+    if (!oldIframe) return;
+    oldIframe.src = "about:blank";
+    try {
+        dom.iframeTarget.removeChild(oldIframe);
+    } catch (error) {
+        console.warn(error);
+    }
+}
+
+function recreateIframe(src) {
+    resetIframe();
+    window.setTimeout(() => {
+        const iframe = document.createElement("iframe");
+        iframe.title = "3DGS Content";
+        iframe.setAttribute("allow", "autoplay; fullscreen");
+        iframe.setAttribute("execution-while-out-of-viewport", "");
+        iframe.setAttribute("execution-while-not-rendered", "");
+        iframe.src = src;
+        dom.iframeTarget.appendChild(iframe);
+    }, 50);
+}
+
+function showLoader(message = "Loading...") {
+    dom.viewerLoaderText.textContent = message;
+    dom.viewerLoader.classList.add("visible");
+    setLoaderProgress(0);
+    requestRender();
+}
+
+function hideLoader() {
+    dom.viewerLoader.classList.remove("visible");
+    requestRender();
+}
+
+function setLoaderProgress(ratio) {
+    const progress = clamp01(ratio);
+    dom.viewerLoaderFill.style.width = `${(progress * 100).toFixed(1)}%`;
+    dom.viewerLoaderProgress.textContent = `${Math.round(progress * 100)}%`;
+}
+
+function syncPlaybackUi() {
+    const visible = currentScene().type === "spz";
+    dom.playbackControls.classList.toggle("visible", visible);
+    dom.playbackToggle.textContent = state.playing ? "❚❚" : "▶";
+    dom.playbackToggle.setAttribute("aria-label", state.playing ? "Pause" : "Play");
+    if (!state.draggingSlider) {
+        const progress = state.duration > 0 ? clamp01(state.animationTime / state.duration) : 0;
+        dom.playbackSlider.value = String(progress);
+    }
+}
+
+function flushPlaybackUi() {
+    if (!state.playbackUiDirty) return;
+    syncPlaybackUi();
+    state.playbackUiDirty = false;
+}
+
+function applyRendererQuality(isLoading) {
+    if (!renderer) return;
+    const pixelRatio = isLoading
+        ? Math.min(window.devicePixelRatio || 1, LOADING_PIXEL_RATIO)
+        : Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    requestRender();
+}
+
+function disposeRuntime() {
+    if (state.activeSplatObjectUrl) {
+        if (![...splatObjectUrlCache.values()].includes(state.activeSplatObjectUrl)) {
+            URL.revokeObjectURL(state.activeSplatObjectUrl);
+        }
+        state.activeSplatObjectUrl = null;
+    }
+    if (viewer) {
+        try {
+            viewer.dispose();
+        } catch (error) {
+            console.warn(error);
+        }
+    }
+    if (renderer?.domElement?.parentNode === dom.viewerTarget) {
+        dom.viewerTarget.removeChild(renderer.domElement);
+    }
+    viewer = null;
+    controls = null;
+    camera = null;
+    renderer = null;
+    requestRender();
+}
+
+function scheduleReturnToPath() {
+    if (state.interactionEndTimer) {
+        window.clearTimeout(state.interactionEndTimer);
+    }
+    state.interactionEndTimer = window.setTimeout(() => {
+        state.userInteracting = false;
+        state.returningToPath = true;
+        applyFrame(state.frameCursor, false);
+        state.interactionEndTimer = null;
+        markPlaybackUiDirty();
+        requestRender();
+    }, INTERACTION_END_DELAY_MS);
+}
+
+function createRuntime() {
+    renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: true,
+        powerPreference: "low-power"
+    });
+    renderer.setClearColor(0x000000, 1);
+    applyRendererQuality(true);
+    dom.viewerTarget.appendChild(renderer.domElement);
+
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 3);
+    camera.up.set(0, 1, 0);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.autoRotate = false;
+    controls.target.set(0, 0, 0);
+    controls.addEventListener("start", () => {
+        state.playing = false;
+        state.userInteracting = true;
+        state.returningToPath = false;
+        if (state.interactionEndTimer) {
+            window.clearTimeout(state.interactionEndTimer);
+            state.interactionEndTimer = null;
+        }
+        markPlaybackUiDirty();
+        requestRender();
+    });
+    controls.addEventListener("end", scheduleReturnToPath);
+    renderer.domElement.addEventListener("wheel", () => {
+        state.playing = false;
+        state.userInteracting = true;
+        state.returningToPath = false;
+        markPlaybackUiDirty();
+        requestRender();
+        scheduleReturnToPath();
+    }, { passive: true });
+
+    viewer = new GaussianSplats3D.Viewer({
+        selfDrivenMode: false,
+        renderer,
+        camera,
+        useBuiltInControls: false,
+        ignoreDevicePixelRatio: false,
+        gpuAcceleratedSort: false,
+        sharedMemoryForWorkers: false,
+        integerBasedSort: false,
+        enableSIMDInSort: false,
+        freeIntermediateSplatData: false,
+        sceneRevealMode: GaussianSplats3D.SceneRevealMode.Instant,
+        renderMode: GaussianSplats3D.RenderMode.Always,
+        logLevel: GaussianSplats3D.LogLevel.None,
+        sphericalHarmonicsDegree: 0
+    });
+}
+
+async function fetchAsArrayBuffer(url, onProgress) {
+    if (arrayBufferCache.has(url)) {
+        onProgress?.(1);
+        return arrayBufferCache.get(url).slice(0);
+    }
+
+    const response = await fetch(url, { cache: "force-cache" });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch asset: ${response.status}`);
+    }
+    const total = Number(response.headers.get("content-length")) || 0;
+    if (!response.body || !total) {
+        const buffer = await response.arrayBuffer();
+        onProgress?.(1);
+        arrayBufferCache.set(url, buffer.slice(0));
+        return buffer;
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.byteLength;
+        onProgress?.(loaded / total);
+    }
+    const merged = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    onProgress?.(1);
+    const buffer = merged.buffer;
+    arrayBufferCache.set(url, buffer.slice(0));
+    return buffer;
+}
+
+function getSpzWorker() {
+    if (spzWorker) return spzWorker;
+    spzWorkerUrl = URL.createObjectURL(new Blob([SPZ_WORKER_SOURCE], { type: "text/javascript" }));
+    spzWorker = new Worker(spzWorkerUrl, { type: "module" });
+    spzWorker.onmessage = (event) => {
+        const { id, splatBuffer, error } = event.data;
+        const pending = spzWorkerPending.get(id);
+        if (!pending) return;
+        spzWorkerPending.delete(id);
+        if (error) {
+            pending.reject(new Error(error));
+            return;
+        }
+        pending.resolve(splatBuffer);
+    };
+    spzWorker.onerror = (event) => {
+        const error = new Error(event.message || "SPZ worker failed.");
+        for (const { reject } of spzWorkerPending.values()) {
+            reject(error);
+        }
+        spzWorkerPending.clear();
+        spzWorker.terminate();
+        spzWorker = null;
+        if (spzWorkerUrl) {
+            URL.revokeObjectURL(spzWorkerUrl);
+            spzWorkerUrl = null;
+        }
+    };
+    return spzWorker;
+}
+
+function convertSpzBufferInWorker(compressedBuffer) {
+    return new Promise((resolve, reject) => {
+        const worker = getSpzWorker();
+        const id = ++spzWorkerTaskId;
+        spzWorkerPending.set(id, { resolve, reject });
+        worker.postMessage({ id, compressedBuffer }, [compressedBuffer]);
+    });
+}
+
+async function convertSpzBuffer(compressedBuffer) {
+    if (typeof Worker === "undefined") {
+        const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+        return serializeSplatFromSpzCloud(cloud);
+    }
+
+    try {
+        return await convertSpzBufferInWorker(compressedBuffer);
+    } catch (error) {
+        console.warn("SPZ worker conversion failed, falling back to main thread.", error);
+        const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+        return serializeSplatFromSpzCloud(cloud);
+    }
+}
+
+async function loadSpzAsSplatObjectUrl(url, onProgress) {
+    if (splatObjectUrlCache.has(url)) {
+        onProgress?.(1);
+        return splatObjectUrlCache.get(url);
+    }
+
+    const spzBuffer = await fetchAsArrayBuffer(url, (ratio) => onProgress?.(ratio * 0.55));
+    const splatBuffer = await convertSpzBuffer(spzBuffer);
+    onProgress?.(0.8);
+    onProgress?.(1);
+    const objectUrl = URL.createObjectURL(new Blob([splatBuffer], { type: "application/octet-stream" }));
+    splatObjectUrlCache.set(url, objectUrl);
+    return objectUrl;
+}
+
+function makeKirTransform(position, rotationRows) {
+    const mirror = new THREE.Matrix4().makeScale(-1, -1, 1);
+    const rotationMatrix = new THREE.Matrix3().set(
+        rotationRows[0][0], rotationRows[0][1], rotationRows[0][2],
+        rotationRows[1][0], rotationRows[1][1], rotationRows[1][2],
+        rotationRows[2][0], rotationRows[2][1], rotationRows[2][2]
+    );
+    const inverseRotation = rotationMatrix.clone().invert();
+    const translated = new THREE.Vector3(position[0], position[1], position[2]).negate().applyMatrix3(inverseRotation);
+    const transform = new THREE.Matrix4().setFromMatrix3(inverseRotation);
+    transform.setPosition(translated);
+    transform.multiply(mirror);
+    return transform;
+}
+
+function parseFrames(json) {
+    if (!Array.isArray(json) || json.length < 2) {
+        throw new Error("Camera data is invalid.");
+    }
+    return json.map((frame) => {
+        const viewMatrix = makeKirTransform(frame.position, frame.rotation).invert();
+        return {
+            position: new THREE.Vector3().setFromMatrixPosition(viewMatrix),
+            target: new THREE.Vector3(0, 0, 1).applyMatrix4(viewMatrix),
+            fy: frame.fy
+        };
+    });
+}
+
+async function loadFrames(cameraPath) {
+    if (frameCache.has(cameraPath)) {
+        return frameCache.get(cameraPath).map((frame) => ({
+            position: frame.position.clone(),
+            target: frame.target.clone(),
+            fy: frame.fy
+        }));
+    }
+
+    const response = await fetch(cameraPath, { cache: "force-cache" });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch camera path: ${response.status}`);
+    }
+    const frames = parseFrames(await response.json());
+    frameCache.set(cameraPath, frames.map((frame) => ({
+        position: frame.position.clone(),
+        target: frame.target.clone(),
+        fy: frame.fy
+    })));
+    return frames;
+}
+
+function updateProjection(frame) {
+    if (!frame?.fy || !camera) return camera?.fov ?? 65;
+    const sourceFov = 2 * Math.atan(window.innerHeight / (2 * frame.fy)) * 180 / Math.PI;
+    const fov = sourceFov * FOV_MULTIPLIER;
+    return Number.isFinite(fov) && fov > 1 && fov < 179 ? fov : camera.fov;
+}
+
+function rotateModelRoot(root) {
+    if (root?.rotation && typeof root.rotation.z === "number") {
+        root.rotation.z = Math.PI;
+        root.updateMatrixWorld?.(true);
+        return true;
+    }
+    return false;
+}
+
+function applyModelOrientation(sceneHandle) {
+    const candidates = [sceneHandle, sceneHandle?.scene, sceneHandle?.splatMesh, viewer?.scene, viewer?.splatMesh];
+    for (const candidate of candidates) {
+        if (rotateModelRoot(candidate)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function buildSampledPath() {
+    if (!state.frames.length) {
+        state.sampledPath = null;
+        return;
+    }
+    const sampleCount = Math.max(Math.ceil(state.duration * TARGET_FPS * PATH_SAMPLE_MULTIPLIER), 360);
+    const px = state.frames.map((frame) => frame.position.x);
+    const py = state.frames.map((frame) => frame.position.y);
+    const pz = state.frames.map((frame) => frame.position.z);
+    const tx = state.frames.map((frame) => frame.target.x);
+    const ty = state.frames.map((frame) => frame.target.y);
+    const tz = state.frames.map((frame) => frame.target.z);
+    state.sampledPath = new Array(sampleCount);
+
+    for (let index = 0; index < sampleCount; index += 1) {
+        const normalized = sampleCount > 1 ? index / (sampleCount - 1) : 0;
+        const eased = sinusoidalInOut(normalized);
+        const frameIndex = Math.min(Math.round(normalized * (state.frames.length - 1)), state.frames.length - 1);
+        const currentFrame = state.frames[frameIndex];
+        state.sampledPath[index] = {
+            position: new THREE.Vector3(
+                bezierInterpolate(px, eased),
+                bezierInterpolate(py, eased),
+                bezierInterpolate(pz, eased)
+            ),
+            target: new THREE.Vector3(
+                bezierInterpolate(tx, eased),
+                bezierInterpolate(ty, eased),
+                bezierInterpolate(tz, eased)
+            ),
+            fov: updateProjection(currentFrame)
+        };
+    }
+}
+
+function sampleFrameState(cursor) {
+    if (!state.frames.length || !state.sampledPath?.length) return null;
+    const maxIndex = state.frames.length - 1;
+    const normalized = maxIndex > 0 ? clamp01(cursor / maxIndex) : 0;
+    const pathMaxIndex = state.sampledPath.length - 1;
+    const pathCursor = normalized * pathMaxIndex;
+    const baseIndex = Math.floor(pathCursor);
+    const nextIndex = Math.min(baseIndex + 1, pathMaxIndex);
+    const mix = smootherstep(pathCursor - baseIndex);
+    const base = state.sampledPath[baseIndex];
+    const next = state.sampledPath[nextIndex];
+    spzSampleState.position.copy(base.position).lerp(next.position, mix);
+    spzSampleState.target.copy(base.target).lerp(next.target, mix);
+    spzSampleState.fov = lerp(base.fov, next.fov, mix);
+    return spzSampleState;
+}
+
+function applyFrame(cursor, immediate = false) {
+    const sampled = sampleFrameState(cursor);
+    if (!sampled) return;
+    state.desiredCameraPosition.copy(sampled.position);
+    state.desiredControlTarget.copy(sampled.target);
+    state.desiredFov = sampled.fov;
+    requestRender();
+    if (immediate && camera && controls) {
+        camera.up.set(0, 1, 0);
+        camera.position.copy(state.desiredCameraPosition);
+        controls.target.copy(state.desiredControlTarget);
+        camera.lookAt(controls.target);
+        if (Math.abs(camera.fov - state.desiredFov) > FOV_UPDATE_EPSILON) {
+            camera.fov = state.desiredFov;
+            camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+        controls.update();
+    }
+}
+
+function updateSmoothedCamera(deltaSeconds) {
+    if (!camera || !controls) return;
+    if (state.userInteracting) {
+        controls.update();
+        return;
+    }
+    const strength = state.returningToPath ? RETURN_SPRING_STRENGTH : CAMERA_SMOOTHNESS;
+    const alpha = Math.min(Math.max(1 - Math.exp(-strength * deltaSeconds), 0), 1);
+    camera.up.set(0, 1, 0);
+    camera.position.lerp(state.desiredCameraPosition, alpha);
+    controls.target.lerp(state.desiredControlTarget, alpha);
+    const nextFov = lerp(camera.fov, state.desiredFov, alpha);
+    if (Math.abs(camera.fov - nextFov) > FOV_UPDATE_EPSILON) {
+        camera.fov = nextFov;
+        camera.updateProjectionMatrix();
+    }
+    camera.lookAt(controls.target);
+    camera.updateMatrixWorld();
+    controls.update();
+
+    if (state.returningToPath) {
+        const positionError = camera.position.distanceToSquared(state.desiredCameraPosition);
+        const targetError = controls.target.distanceToSquared(state.desiredControlTarget);
+        const fovError = Math.abs(camera.fov - state.desiredFov);
+        if (positionError < RETURN_COMPLETE_EPSILON && targetError < RETURN_COMPLETE_EPSILON && fovError < 0.05) {
+            state.returningToPath = false;
+        }
+    }
+}
+
+function updateUi() {
+    const buttons = dom.contentButtonsWrapper.querySelectorAll("button");
+    buttons.forEach((button, index) => {
+        button.classList.toggle("active", index === state.currentIndex);
+    });
+    if (buttons[state.currentIndex]) {
+        buttons[state.currentIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+    const mobileItems = dom.listModalContent.querySelectorAll(".list-item");
+    mobileItems.forEach((item, index) => {
+        item.classList.toggle("active", index === state.currentIndex);
+    });
+    dom.sceneCounter.textContent = `${state.currentIndex + 1} / ${scenes.length}`;
+    markPlaybackUiDirty();
+}
+
+async function loadSpzScene(scene) {
+    const token = ++state.loadToken;
+    state.playing = false;
+    state.frameCursor = 0;
+    state.animationTime = 0;
+    state.duration = LOOP_DURATION_SECONDS;
+    state.frames = [];
+    state.sampledPath = null;
+    state.draggingSlider = false;
+    state.userInteracting = false;
+    state.returningToPath = false;
+    state.lastTick = 0;
+    state.lastRenderTime = 0;
+    state.renderRequested = true;
+    if (state.interactionEndTimer) {
+        window.clearTimeout(state.interactionEndTimer);
+        state.interactionEndTimer = null;
+    }
+
+    dom.contentHost.classList.add("mode-spz");
+    resetIframe();
+    disposeRuntime();
+    createRuntime();
+    showLoader("Loading...");
+    markPlaybackUiDirty();
+    flushPlaybackUi();
+
+    try {
+        const assetObjectUrl = await loadSpzAsSplatObjectUrl(resolveAppUrl(scene.assetPath), (ratio) => {
+            if (ratio >= 0.55) {
+                dom.viewerLoaderText.textContent = "Converting SPZ...";
+            }
+            setLoaderProgress(Math.max(0.06, ratio));
+        });
+        if (token !== state.loadToken) return;
+        state.activeSplatObjectUrl = assetObjectUrl;
+
+        await viewer.addSplatScene(assetObjectUrl, {
+            format: GaussianSplats3D.SceneFormat.Splat,
+            showLoadingUI: false,
+            progressiveLoad: true,
+            splatAlphaRemovalThreshold: 1,
+            onProgress: null
+        });
+        if (token !== state.loadToken) return;
+        applyModelOrientation(viewer);
+
+        dom.viewerLoaderText.textContent = "Loading camera path...";
+        setLoaderProgress(0.95);
+        state.frames = await loadFrames(resolveAppUrl(scene.cameraPath));
+        if (token !== state.loadToken) return;
+        buildSampledPath();
+        applyFrame(0, true);
+        setLoaderProgress(1);
+        applyRendererQuality(false);
+        hideLoader();
+        await wait(AUTOPLAY_START_DELAY_MS);
+        if (token !== state.loadToken) return;
+        state.playing = true;
+        markPlaybackUiDirty();
+        requestRender();
+    } catch (error) {
+        console.error(error);
+        dom.viewerLoaderText.textContent = "Failed to load scene";
+        setLoaderProgress(1);
+        requestRender();
+    }
+}
+
+function loadIframeScene(scene) {
+    state.loadToken += 1;
+    state.playing = false;
+    state.frames = [];
+    state.sampledPath = null;
+    state.draggingSlider = false;
+    dom.contentHost.classList.remove("mode-spz");
+    hideLoader();
+    disposeRuntime();
+    recreateIframe(scene.src);
+    markPlaybackUiDirty();
+    flushPlaybackUi();
+}
+
+function changeScene(index) {
+    if (index < 0 || index >= scenes.length) return;
+    state.currentIndex = index;
+    updateSceneUrl(index);
+    const scene = currentScene();
+    dom.infoTitle.textContent = scene.title;
+    dom.infoDescription.textContent = scene.description;
+    dom.creditDisplay.innerHTML = scene.credit;
+    if (scene.type === "spz") {
+        loadSpzScene(scene);
+    } else {
+        loadIframeScene(scene);
+    }
+    updateUi();
+}
+
+function navigate(direction) {
+    const nextIndex = (state.currentIndex + direction + scenes.length) % scenes.length;
+    changeScene(nextIndex);
+}
+
+function togglePlayback() {
+    if (!state.frames.length) return;
+    state.playing = !state.playing;
+    state.userInteracting = false;
+    state.returningToPath = false;
+    if (state.interactionEndTimer) {
+        window.clearTimeout(state.interactionEndTimer);
+        state.interactionEndTimer = null;
+    }
+    if (state.playing && state.animationTime >= state.duration) {
+        state.animationTime = 0;
+        state.frameCursor = 0;
+        applyFrame(0, true);
+    }
+    markPlaybackUiDirty();
+    requestRender();
+}
+
+function renderLoop(now) {
+    requestAnimationFrame(renderLoop);
+    if (!viewer || !camera || !controls || !renderer) return;
+
+    const shouldRender = state.renderRequested
+        || state.playing
+        || state.userInteracting
+        || state.returningToPath
+        || dom.viewerLoader.classList.contains("visible");
+    if (!shouldRender) {
+        state.lastTick = now;
+        flushPlaybackUi();
+        return;
+    }
+
+    const frameIntervalMs = 1000 / TARGET_FPS;
+    if (state.lastRenderTime && now - state.lastRenderTime < frameIntervalMs) return;
+    state.lastRenderTime = now;
+
+    if (!state.lastTick) state.lastTick = now;
+    const deltaSeconds = Math.min((now - state.lastTick) / 1000, 0.1);
+    state.lastTick = now;
+
+    if (state.playing && state.frames.length > 1) {
+        state.animationTime += deltaSeconds;
+        if (state.animationTime >= state.duration) {
+            state.animationTime = 0;
+            state.frameCursor = 0;
+            applyFrame(0, true);
+        }
+        const normalized = Math.min(state.animationTime / state.duration, 1);
+        state.frameCursor = normalized * (state.frames.length - 1);
+        applyFrame(state.frameCursor);
+        markPlaybackUiDirty();
+    }
+
+    updateSmoothedCamera(deltaSeconds);
+    viewer.update();
+    viewer.render();
+    state.renderRequested = false;
+    flushPlaybackUi();
+}
+
+function setupUi() {
+    scenes.forEach((scene, index) => {
+        const button = document.createElement("button");
+        button.textContent = scene.title;
+        button.onclick = () => changeScene(index);
+        dom.contentButtonsWrapper.appendChild(button);
+
+        const item = document.createElement("div");
+        item.className = "list-item";
+        item.textContent = scene.title;
+        item.onclick = () => {
+            changeScene(index);
+            dom.listModal.classList.remove("visible");
+        };
+        dom.listModalContent.appendChild(item);
+    });
+
+    dom.prevBtn.onclick = () => navigate(-1);
+    dom.nextBtn.onclick = () => navigate(1);
+    dom.mobilePrevBtn.onclick = () => navigate(-1);
+    dom.mobileNextBtn.onclick = () => navigate(1);
+    dom.infoToggleBtn.onclick = () => dom.infoBox.classList.toggle("visible");
+    dom.listToggleBtn.onclick = () => dom.listModal.classList.add("visible");
+    dom.listModalClose.onclick = () => dom.listModal.classList.remove("visible");
+    dom.fullscreenBtn.onclick = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((error) => console.error(error));
+        } else {
+            document.exitFullscreen();
+        }
+    };
+    dom.playbackToggle.onclick = () => togglePlayback();
+    dom.playbackSlider.addEventListener("input", () => {
+        if (!state.frames.length) return;
+        state.draggingSlider = true;
+        state.playing = false;
+        state.userInteracting = false;
+        state.returningToPath = false;
+        if (state.interactionEndTimer) {
+            window.clearTimeout(state.interactionEndTimer);
+            state.interactionEndTimer = null;
+        }
+        const progress = Number(dom.playbackSlider.value);
+        state.animationTime = progress * state.duration;
+        state.frameCursor = progress * Math.max(state.frames.length - 1, 0);
+        applyFrame(state.frameCursor, true);
+        markPlaybackUiDirty();
+        requestRender();
+    });
+    dom.playbackSlider.addEventListener("change", () => {
+        state.draggingSlider = false;
+        markPlaybackUiDirty();
+        requestRender();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            if (document.activeElement) document.activeElement.blur();
+            navigate(event.key === "ArrowLeft" ? -1 : 1);
+        }
+    });
+
+    window.addEventListener("resize", () => {
+        if (!camera || !renderer) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        applyRendererQuality(dom.viewerLoader.classList.contains("visible"));
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            state.playing = false;
+        } else if (currentScene().type === "spz" && state.frames.length > 1) {
+            state.playing = true;
+        }
+        markPlaybackUiDirty();
+        requestRender();
+    });
+}
+
+window.addEventListener("beforeunload", () => {
+    if (spzWorker) {
+        spzWorker.terminate();
+    }
+    if (spzWorkerUrl) {
+        URL.revokeObjectURL(spzWorkerUrl);
+    }
+});
+
+setupUi();
+renderLoop(0);
+changeScene(getSceneIndexFromUrl());
