@@ -4,15 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-    <!-- ページタイトル -->
     <title>Gaza 3D Digital Archives | A UTokyo & Partners Initiative</title>
-
-    <!-- 検索エンジン用の説明文 -->
     <meta name="description"
         content="An interactive 3D digital archive documenting the reality in Gaza, including scenes from Al Shifa Hospital and Khan Yunis. Created by the University of Tokyo and partners based on footage from Al Jazeera and UNRWA.">
-
-    <!-- Facebook & SNS共有用のOpen Graphタグ -->
     <meta property="og:title" content="Gaza 3D Digital Archives | Witnessing Reality">
     <meta property="og:description"
         content="An interactive 3D archive of scenes from Gaza, created from Al Jazeera and UNRWA footage to preserve and convey the situation on the ground.">
@@ -22,8 +16,6 @@
     <meta property="og:site_name" content="Gaza 3D Digital Archives">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-
-    <!-- X (Twitter) 共有用のカードタグ -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@hwtnv">
     <meta name="twitter:creator" content="@hwtnv">
@@ -31,18 +23,37 @@
     <meta name="twitter:description"
         content="An interactive 3D archive of scenes from Gaza, created from Al Jazeera and UNRWA footage to preserve and convey the situation on the ground.">
     <meta name="twitter:image" content="https://gaza.archiving.jp/sns.jpg">
-
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+            "@mkkellogg/gaussian-splats-3d": "https://unpkg.com/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js",
+            "fflate": "https://unpkg.com/fflate@0.8.2/esm/browser.js"
+        }
+    }
+    </script>
     <style>
         :root {
-            --glass-bg: linear-gradient(180deg, rgba(44, 52, 64, 0.5), rgba(18, 22, 30, 0.3));
-            --glass-bg-strong: linear-gradient(180deg, rgba(56, 66, 82, 0.68), rgba(18, 24, 34, 0.5));
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --glass-border-strong: rgba(255, 255, 255, 0.2);
-            --glass-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
-            --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-            --glass-text-soft: rgba(228, 236, 246, 0.82);
-            --glass-accent: rgba(122, 176, 255, 0.32);
-            --glass-accent-strong: rgba(122, 176, 255, 0.58);
+            --bg: #0f1418;
+            --panel: rgba(12, 18, 24, 0.72);
+            --panel-strong: rgba(10, 15, 20, 0.88);
+            --border: rgba(255, 255, 255, 0.14);
+            --border-strong: rgba(255, 255, 255, 0.28);
+            --text: #edf2f7;
+            --muted: rgba(237, 242, 247, 0.72);
+            --accent: #d9b86c;
+            --shadow: 0 24px 54px rgba(0, 0, 0, 0.32);
+            --glass-panel:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01)),
+                rgba(12, 18, 24, 0.56);
+            --glass-panel-strong:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05)),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)),
+                rgba(10, 15, 20, 0.64);
+            --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            --glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.30);
         }
 
         html,
@@ -50,47 +61,159 @@
             margin: 0;
             padding: 0;
             height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
+            font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(217, 184, 108, 0.08), transparent 24%),
+                radial-gradient(circle at top right, rgba(97, 132, 164, 0.08), transparent 28%),
+                linear-gradient(180deg, #000000 0%, #000000 100%);
+            color: var(--text);
             overflow: hidden;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
         .app-container {
             height: 100dvh;
             position: relative;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
-        .iframe-wrapper {
+        .viewer-wrapper {
             position: relative;
-            border: none;
             height: 100%;
+            overscroll-behavior: none;
+            overscroll-behavior-x: none;
         }
 
+        #content-host,
         #iframe-target,
-        #iframe-target iframe {
+        #iframe-target iframe,
+        #viewer-target,
+        #viewer-target canvas {
             width: 100%;
             height: 100%;
             border: none;
         }
 
-        #controls {
+        #content-host {
+            position: relative;
+            height: 100%;
+            background: #000;
+        }
+
+        #iframe-target,
+        #viewer-target {
             position: absolute;
-            left: 14px;
-            right: 14px;
-            bottom: 14px;
-            z-index: 950;
-            display: flex;
+            inset: 0;
+        }
+
+        #viewer-target {
+            display: none;
+        }
+
+        #content-host.mode-spz #viewer-target {
+            display: block;
+        }
+
+        #content-host.mode-spz #iframe-target {
+            display: none;
+        }
+
+        #viewer-loader {
+            position: absolute;
+            inset: 0;
+            z-index: 40;
+            display: none;
             align-items: center;
-            padding: 6px 10px 7px;
+            justify-content: center;
+            background: rgba(8, 12, 18, 0.42);
+            pointer-events: none;
+        }
+
+        #viewer-loader.visible {
+            display: flex;
+        }
+
+        .viewer-loader-card {
+            min-width: 220px;
+            max-width: 280px;
+            padding: 14px 16px;
             background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
-                linear-gradient(180deg, rgba(28, 34, 44, 0.28), rgba(12, 16, 22, 0.18));
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            gap: 10px;
+                linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+                var(--glass-bg-strong);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow), var(--glass-highlight);
             -webkit-backdrop-filter: blur(10px) saturate(120%);
             backdrop-filter: blur(10px) saturate(120%);
-            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18), var(--glass-highlight);
+        }
+
+        .viewer-loader-text {
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .viewer-loader-bar {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.14);
+            overflow: hidden;
+        }
+
+        .viewer-loader-fill {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(140, 196, 255, 0.45), rgba(140, 196, 255, 0.95));
+        }
+
+        .viewer-loader-progress {
+            margin-top: 8px;
+            font-size: 11px;
+            text-align: right;
+            color: var(--glass-text-soft);
+        }
+
+        #controls,
+        #playback-controls {
+            position: absolute;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: var(--glass-highlight), var(--glass-shadow);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+
+        #controls {
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            padding: 10px;
+        }
+
+        #playback-controls {
+            right: 8px;
+            left: auto;
+            bottom: 79px;
+            z-index: 951;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            width: min(240px, calc(100vw - 16px));
+            padding: 6px 8px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03)),
+                rgba(9, 14, 20, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+
+        #playback-controls.visible {
+            display: flex;
         }
 
         #content-buttons-wrapper {
@@ -116,22 +239,127 @@
             border-radius: 4px;
         }
 
-        #controls button {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        button,
+        #playback-slider {
+            appearance: none;
+        }
+
+        #controls button,
+        #playback-controls button,
+        #list-toggle-btn,
+        #info-toggle-btn,
+        #fullscreen-btn,
+        #list-modal-close {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03));
+            color: var(--text);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+
+        #controls button,
+        #playback-controls button {
             padding: 7px 14px;
             margin: 0;
-            border-radius: 0;
-            cursor: pointer;
             font-size: 13px;
-            transition: background-color 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.25s;
             display: inline-flex;
             justify-content: center;
             align-items: center;
-            -webkit-backdrop-filter: blur(6px) saturate(115%);
-            backdrop-filter: blur(6px) saturate(115%);
-            box-shadow: var(--glass-highlight), 0 8px 20px rgba(0, 0, 0, 0.16);
+        }
+
+        #controls button.active {
+            background:
+                linear-gradient(180deg, rgba(217, 184, 108, 0.38), rgba(217, 184, 108, 0.14)),
+                rgba(43, 36, 20, 0.82);
+            border-color: rgba(217, 184, 108, 0.72);
+            color: #fff7e7;
+        }
+
+        #controls button:hover,
+        #playback-controls button:hover {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+            border-color: var(--border-strong);
+            transform: translateY(-1px);
+        }
+
+        #prev-btn,
+        #next-btn {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        #playback-toggle {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1;
+            white-space: nowrap;
+            background:
+                linear-gradient(180deg, rgba(217, 184, 108, 0.22), rgba(217, 184, 108, 0.08)),
+                rgba(26, 22, 14, 0.74);
+            border-color: rgba(217, 184, 108, 0.5);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.18);
+        }
+
+        #playback-slider {
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            accent-color: var(--accent);
+            opacity: 1;
+            background: transparent;
+        }
+
+        #playback-slider::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            box-sizing: border-box;
+        }
+
+        #playback-slider::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            margin-top: -4px;
+            border: 1px solid rgba(255, 255, 255, 0.56);
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 12px rgba(217, 184, 108, 0.22);
+            box-sizing: border-box;
+        }
+
+        #playback-slider::-moz-range-track {
+            height: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            box-sizing: border-box;
+        }
+
+        #playback-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.56);
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 12px rgba(217, 184, 108, 0.22);
+            box-sizing: border-box;
         }
 
         .archives-index-link {
@@ -142,57 +370,19 @@
             display: inline-flex;
             align-items: center;
             padding: 8px 12px;
-            border: 1px solid var(--glass-border);
-            border-radius: 0;
+            border: 1px solid rgba(255, 255, 255, 0.16);
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02)),
-                var(--glass-bg-strong);
-            -webkit-backdrop-filter: blur(8px) saturate(120%);
-            backdrop-filter: blur(8px) saturate(120%);
-            box-shadow: var(--glass-shadow), var(--glass-highlight);
-            color: #f0f0f0;
+                var(--glass-panel-strong);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            box-shadow: var(--glass-highlight), var(--glass-shadow);
+            color: var(--text);
             font-size: 12px;
             line-height: 1;
             letter-spacing: 0.02em;
             text-decoration: none;
             white-space: nowrap;
-            transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
-        }
-
-        .archives-index-link:hover {
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
-                rgba(42, 52, 68, 0.78);
-            border-color: var(--glass-border-strong);
-            transform: translateY(-1px);
-        }
-
-        .archives-index-link:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.8);
-            outline-offset: 2px;
-        }
-
-        #controls button.active {
-            background:
-                linear-gradient(180deg, rgba(175, 215, 255, 0.34), rgba(84, 140, 255, 0.18)),
-                rgba(26, 50, 94, 0.5);
-            border-color: rgba(157, 205, 255, 0.56);
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                0 10px 24px rgba(35, 92, 196, 0.26);
-        }
-
-        #controls button:hover {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
-            border-color: var(--glass-border-strong);
-            transform: translateY(-1px);
-        }
-
-        #prev-btn,
-        #next-btn {
-            flex-shrink: 0;
-            padding: 6px;
-            min-width: 38px;
         }
 
         .icon {
@@ -214,49 +404,48 @@
 
         #info-box {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 255px;
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
-                var(--glass-bg-strong);
-            border: 1px solid var(--glass-border);
-            border-radius: 0;
-            padding: 15px;
-            box-shadow: var(--glass-shadow), var(--glass-highlight);
-            z-index: 1000;
-            max-height: calc(100% - 40px);
+            top: 8px;
+            right: 8px;
+            z-index: 20;
+            width: min(360px, calc(100vw - 28px));
+            padding: 14px 15px;
+            background: var(--glass-panel-strong);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: var(--glass-highlight), var(--glass-shadow);
+            max-height: calc(100% - 16px);
             overflow-y: auto;
-            -webkit-backdrop-filter: blur(10px) saturate(120%);
-            backdrop-filter: blur(10px) saturate(120%);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
         }
 
         #info-box h3 {
-            margin-top: 0;
-            font-size: 16px;
-            letter-spacing: 0.01em;
+            margin: 0 0 8px;
+            font-size: 17px;
+            line-height: 1.35;
         }
 
         #info-box p {
+            margin: 0;
             font-size: 12px;
-            line-height: 1.5;
-            color: var(--glass-text-soft);
+            line-height: 1.65;
+            color: var(--muted);
         }
 
-        #info-box #credit-display {
-            margin-top: 12px;
-            font-size: 10px;
-            color: rgba(216, 224, 235, 0.68);
+        #credit-display {
+            margin-top: 10px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--muted);
             border-top: 1px solid rgba(255, 255, 255, 0.12);
             padding-top: 8px;
         }
 
-        #info-box #credit-display a {
+        #credit-display a {
             color: #a9cbff;
             text-decoration: none;
         }
 
-        #info-box #credit-display a:hover {
+        #credit-display a:hover {
             text-decoration: underline;
         }
 
@@ -264,12 +453,13 @@
             display: none;
         }
 
+        #overlay-buttons {
+            display: none !important;
+        }
+
         #list-modal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background:
                 radial-gradient(circle at top, rgba(122, 176, 255, 0.12), transparent 38%),
                 rgba(6, 10, 18, 0.72);
@@ -293,23 +483,6 @@
             text-align: right;
         }
 
-        #list-modal-close {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
-            border: 1px solid var(--glass-border);
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 0;
-            box-shadow: var(--glass-highlight);
-            -webkit-backdrop-filter: blur(6px);
-            backdrop-filter: blur(6px);
-        }
-
-        #list-modal-close .icon {
-            width: 30px;
-            height: 30px;
-            color: white;
-        }
-
         #list-modal-content {
             flex-grow: 1;
             overflow-y: auto;
@@ -331,21 +504,24 @@
 
         .list-item.active {
             background:
-                linear-gradient(180deg, rgba(175, 215, 255, 0.3), rgba(84, 140, 255, 0.14)),
-                rgba(26, 50, 94, 0.44);
-            border-color: rgba(157, 205, 255, 0.4);
-            color: white;
+                linear-gradient(180deg, rgba(217, 184, 108, 0.38), rgba(217, 184, 108, 0.14)),
+                rgba(43, 36, 20, 0.82);
+            border-color: rgba(217, 184, 108, 0.72);
+            color: #fff7e7;
         }
 
-        .list-item:hover {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05));
-            border-color: rgba(255, 255, 255, 0.14);
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 768px) {
+        @media (max-width: 860px) {
             #controls {
                 display: none;
+            }
+
+            #playback-controls {
+                bottom: 96px;
+                width: min(86vw, 360px);
+                max-width: min(86vw, 360px);
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
             }
 
             .mobile-ui {
@@ -360,51 +536,70 @@
 
             #mobile-controls {
                 position: absolute;
-                left: 8px;
-                right: 8px;
-                bottom: 8px;
-                z-index: 950;
-                display: grid;
-                grid-template-columns: 80px 1fr 80px;
-                padding: 5px;
+                inset: 0;
+                z-index: 22;
+                pointer-events: none;
+                display: block;
+                padding: 0;
             }
 
             #mobile-prev,
             #mobile-next {
-                padding: 10px;
+                position: absolute;
+                width: 50px;
+                height: 50px;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                padding: 0;
+                background: var(--glass-panel);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: var(--glass-highlight), var(--glass-shadow);
+                pointer-events: auto;
+            }
+
+            #mobile-prev {
+                left: 8px;
+            }
+
+            #mobile-next {
+                right: 8px;
             }
 
             #mobile-prev .icon,
             #mobile-next .icon {
-                width: 30px;
-                height: 30px;
-                stroke-width: 3;
+                width: 20px;
+                height: 20px;
+                stroke-width: 2.2;
             }
 
             #mobile-center-controls {
+                position: absolute;
+                left: 50%;
+                bottom: 10px;
+                transform: translateX(-50%);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 5px;
+                gap: 8px;
+                pointer-events: auto;
             }
 
             #scene-counter {
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
+                line-height: 1;
+                text-shadow:
+                    0 1px 2px rgba(0, 0, 0, 0.85),
+                    0 4px 18px rgba(0, 0, 0, 0.5);
             }
 
-            /* ▼▼▼ 修正箇所 ▼▼▼ */
             #list-toggle-btn {
-                padding: 8px;
-                background:
-                    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
-                    rgba(23, 30, 40, 0.46);
-                color: white;
-                border: 1px solid var(--glass-border);
-                border-radius: 0;
-                -webkit-backdrop-filter: blur(4px);
-                backdrop-filter: blur(4px);
-                box-shadow: var(--glass-highlight), 0 8px 18px rgba(0, 0, 0, 0.22);
+                width: 60px;
+                height: 60px;
+                padding: 0;
+                background: var(--glass-panel);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: var(--glass-highlight), var(--glass-shadow);
             }
 
             #list-toggle-btn .icon {
@@ -413,43 +608,39 @@
             }
 
             #info-box {
-                top: auto;
-                right: 0;
-                left: 0;
-                width: 100%;
-                bottom: -100vh;
-                border-radius: 0;
-                max-height: 60%;
-                box-sizing: border-box;
-                transition: bottom 0.3s ease-in-out;
+                top: 8px;
+                right: 8px;
+                left: 8px;
+                width: auto;
+                bottom: auto;
+                max-height: none;
+                padding: 9px 10px;
+                transition: none;
             }
 
-            #info-box.visible {
-                bottom: 0;
+            #info-box h3 {
+                margin: 0 0 6px;
+                font-size: 15px;
+                line-height: 1.3;
+            }
+
+            #info-box p,
+            #credit-display {
+                font-size: 11px;
+                line-height: 1.5;
             }
 
             #overlay-buttons {
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
-                z-index: 900;
+                display: none !important;
             }
 
             #info-toggle-btn,
             #fullscreen-btn {
-                width: 44px;
-                height: 44px;
-                border-radius: 0;
-                background:
-                    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)),
-                    rgba(20, 28, 38, 0.42);
-                border: 1px solid var(--glass-border);
-                -webkit-backdrop-filter: blur(4px);
-                backdrop-filter: blur(4px);
-                box-shadow: var(--glass-highlight), 0 8px 18px rgba(0, 0, 0, 0.18);
+                width: 50px;
+                height: 50px;
+                background: var(--glass-panel);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: var(--glass-highlight), var(--glass-shadow);
             }
 
             #info-toggle-btn .icon,
@@ -458,10 +649,7 @@
                 height: 22px;
             }
 
-            #fullscreen-btn {
-                display: none;
-            }
-
+            #fullscreen-btn,
             .archives-index-link {
                 display: none;
             }
@@ -470,14 +658,25 @@
 </head>
 
 <body>
-    <!-- HTML構造は変更ありません -->
     <a class="archives-index-link" href="https://all.archiving.jp/" target="_blank" rel="noopener noreferrer"
         aria-label="Archives Index">
         <span>Archives Index</span>
     </a>
     <div class="app-container">
-        <div class="iframe-wrapper">
-            <div id="iframe-target"></div>
+        <div class="viewer-wrapper">
+            <div id="content-host">
+                <div id="iframe-target"></div>
+                <div id="viewer-target"></div>
+                <div id="viewer-loader">
+                    <div class="viewer-loader-card">
+                        <div class="viewer-loader-text" id="viewer-loader-text">Loading...</div>
+                        <div class="viewer-loader-bar">
+                            <div class="viewer-loader-fill" id="viewer-loader-fill"></div>
+                        </div>
+                        <div class="viewer-loader-progress" id="viewer-loader-progress">0%</div>
+                    </div>
+                </div>
+            </div>
             <div id="info-box">
                 <h3 id="info-title"></h3>
                 <p id="info-description"></p>
@@ -504,6 +703,11 @@
             <button id="next-btn" title="Next (Right Arrow)"><svg viewBox="0 0 24 24" class="icon">
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg></button>
+        </div>
+        <div id="playback-controls">
+            <button id="playback-toggle" type="button" aria-label="Pause">❚❚</button>
+            <input id="playback-slider" type="range" min="0" max="1" step="0.0001" value="0"
+                aria-label="Playback progress">
         </div>
         <div id="mobile-controls" class="mobile-ui">
             <button id="mobile-prev" class="mobile-ui"><svg viewBox="0 0 24 24" class="icon">
@@ -532,239 +736,1058 @@
         <div id="list-modal-content"></div>
     </div>
 
-    <script>
-        /**
-         * アプリケーション全体を管理するモジュール
-         */
-        const App = (() => {
+    <script type="module">
+        import * as THREE from "three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import * as GaussianSplats3D from "@mkkellogg/gaussian-splats-3d";
+        import { gunzipSync } from "fflate";
 
-            // --- 1. 定数とデータ ---
-            // 【修正点】データを見やすく整形
-            const contentData = [
-                {
-                    title: "People in Al Shifa Courtyard",
-                    description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1885843519059263488?userId=undefined?&bg_theme=dark",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Al Shifa Hospital Courtyard",
-                    description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1850871041102970880?userId=undefined?&bg_theme=dark",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Destroyed Entrance of Al Shifa Hospital",
-                    description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1850870603406376960?userId=undefined?&bg_theme=dark",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Newborns Huddled for Care at Al Shifa",
-                    description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
-                    src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: false
-                },
-                {
-                    title: "Premature Babies in Improvised Care",
-                    description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
-                    src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: false
-                },
-                {
-                    title: "Abandoned Nursery at Al Shifa Hospital",
-                    description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.",
-                    src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
-                    credit: "© UTokyo & Al Jazeera",
-                    needsReload: false
-                },
-                {
-                    title: "Destroyed UN Vehicle in Bureij Camp",
-                    description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1863133701328601088?userId=undefined?&bg_theme=bright",
-                    credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>',
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Destroyed Cityscape in Khan Yunis",
-                    description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1863739985128062976?userId=undefined?&bg_theme=dark",
-                    credit: "© UTokyo & UNRWA",
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Rubble and Ruins in Khan Yunis",
-                    description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.",
-                    src: "https://www.kiriengine.app/share/3dgsEmbed/1863737783344955392?userId=undefined?&bg_theme=dark",
-                    credit: "© UTokyo & UNRWA",
-                    needsReload: true,
-                    reloadSeconds: 26
-                },
-                {
-                    title: "Japan-Funded Overpass in Khan Yunis",
-                    description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.",
-                    src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false",
-                    credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>',
-                    needsReload: false
+        const LOOP_DURATION_SECONDS = 26;
+        const FOV_MULTIPLIER = 0.96;
+        const CAMERA_SMOOTHNESS = 10;
+        const RETURN_SPRING_STRENGTH = 6;
+        const RETURN_COMPLETE_EPSILON = 0.01;
+        const INTERACTION_END_DELAY_MS = 220;
+        const TARGET_FPS = 60;
+        const MAX_PIXEL_RATIO = 1.25;
+        const LOADING_PIXEL_RATIO = 0.75;
+        const AUTOPLAY_START_DELAY_MS = 200;
+        const PATH_SAMPLE_MULTIPLIER = 3;
+        const SPZ_MAGIC = 0x5053474e;
+        const FLAG_ANTIALIASED = 0x1;
+        const SPZ_HEADER_SIZE = 16;
+        const SPZ_COLOR_SCALE = 0.15;
+        const SPZ_MAX_POINTS = 10000000;
+
+        const scenes = [
+            {
+                title: "People in Al Shifa Courtyard",
+                description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.",
+                type: "spz",
+                assetPath: "./ply_spz/people.spz",
+                cameraPath: "./ply_spz/cameras/people.json",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Al Shifa Hospital Courtyard",
+                description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.",
+                type: "spz",
+                assetPath: "./ply_spz/courtyard.spz",
+                cameraPath: "./ply_spz/cameras/courtyard.json",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Destroyed Entrance of Al Shifa Hospital",
+                description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.",
+                type: "spz",
+                assetPath: "./ply_spz/entrance.spz",
+                cameraPath: "./ply_spz/cameras/entrance.json",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Newborns Huddled for Care at Al Shifa",
+                description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+                type: "iframe",
+                src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Premature Babies in Improvised Care",
+                description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+                type: "iframe",
+                src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Abandoned Nursery at Al Shifa Hospital",
+                description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.",
+                type: "iframe",
+                src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+                credit: "© UTokyo & Al Jazeera"
+            },
+            {
+                title: "Destroyed UN Vehicle in Bureij Camp",
+                description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.",
+                type: "spz",
+                assetPath: "./ply_spz/un.spz",
+                cameraPath: "./ply_spz/cameras/un.json",
+                credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>'
+            },
+            {
+                title: "Destroyed Cityscape in Khan Yunis",
+                description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.",
+                type: "spz",
+                assetPath: "./ply_spz/khan_yunis.spz",
+                cameraPath: "./ply_spz/cameras/khan_yunis.json",
+                credit: "© UTokyo & UNRWA"
+            },
+            {
+                title: "Rubble and Ruins in Khan Yunis",
+                description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.",
+                type: "spz",
+                assetPath: "./ply_spz/khan_yunis2.spz",
+                cameraPath: "./ply_spz/cameras/khan_yunis2.json",
+                credit: "© UTokyo & UNRWA"
+            },
+            {
+                title: "Japan-Funded Overpass in Khan Yunis",
+                description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.",
+                type: "iframe",
+                src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false",
+                credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>'
+            }
+        ];
+
+        const state = {
+            currentIndex: 0,
+            playing: false,
+            frameCursor: 0,
+            animationTime: 0,
+            duration: LOOP_DURATION_SECONDS,
+            frames: [],
+            sampledPath: null,
+            desiredCameraPosition: new THREE.Vector3(0, 0, 3),
+            desiredControlTarget: new THREE.Vector3(0, 0, 0),
+            desiredFov: 65,
+            lastTick: 0,
+            lastRenderTime: 0,
+            loadToken: 0,
+            activeSplatObjectUrl: null,
+            draggingSlider: false,
+            userInteracting: false,
+            returningToPath: false,
+            interactionEndTimer: null
+        };
+
+        const dom = {
+            viewerWrapper: document.querySelector(".viewer-wrapper"),
+            contentHost: document.getElementById("content-host"),
+            iframeTarget: document.getElementById("iframe-target"),
+            viewerTarget: document.getElementById("viewer-target"),
+            viewerLoader: document.getElementById("viewer-loader"),
+            viewerLoaderText: document.getElementById("viewer-loader-text"),
+            viewerLoaderFill: document.getElementById("viewer-loader-fill"),
+            viewerLoaderProgress: document.getElementById("viewer-loader-progress"),
+            infoBox: document.getElementById("info-box"),
+            infoTitle: document.getElementById("info-title"),
+            infoDescription: document.getElementById("info-description"),
+            creditDisplay: document.getElementById("credit-display"),
+            contentButtonsWrapper: document.getElementById("content-buttons-wrapper"),
+            prevBtn: document.getElementById("prev-btn"),
+            nextBtn: document.getElementById("next-btn"),
+            mobilePrevBtn: document.getElementById("mobile-prev"),
+            mobileNextBtn: document.getElementById("mobile-next"),
+            sceneCounter: document.getElementById("scene-counter"),
+            listToggleBtn: document.getElementById("list-toggle-btn"),
+            infoToggleBtn: document.getElementById("info-toggle-btn"),
+            fullscreenBtn: document.getElementById("fullscreen-btn"),
+            listModal: document.getElementById("list-modal"),
+            listModalContent: document.getElementById("list-modal-content"),
+            listModalClose: document.getElementById("list-modal-close"),
+            playbackControls: document.getElementById("playback-controls"),
+            playbackToggle: document.getElementById("playback-toggle"),
+            playbackSlider: document.getElementById("playback-slider")
+        };
+
+        let renderer = null;
+        let camera = null;
+        let controls = null;
+        let viewer = null;
+        const arrayBufferCache = new Map();
+        const splatObjectUrlCache = new Map();
+        const frameCache = new Map();
+
+        function currentScene() {
+            return scenes[state.currentIndex];
+        }
+
+        function getSceneIndexFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const sceneNumber = Number.parseInt(params.get("scene") ?? "", 10);
+            if (!Number.isFinite(sceneNumber)) return 0;
+            const index = sceneNumber - 1;
+            return index >= 0 && index < scenes.length ? index : 0;
+        }
+
+        function updateSceneUrl(index) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("scene", String(index + 1));
+            window.history.replaceState({ scene: index + 1 }, "", url);
+        }
+
+        function clamp01(value) {
+            return Math.max(0, Math.min(value, 1));
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function sinusoidalInOut(value) {
+            return 0.5 * (1 - Math.sin(Math.PI * (0.5 - value)));
+        }
+
+        function smootherstep(value) {
+            const clamped = clamp01(value);
+            return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+        }
+
+        function bezierInterpolate(values, t) {
+            const work = values.slice();
+            for (let order = 1; order < values.length; order += 1) {
+                for (let i = 0; i < values.length - order; i += 1) {
+                    work[i] = (1 - t) * work[i] + t * work[i + 1];
                 }
-            ];
+            }
+            return work[0];
+        }
 
-            // --- 2. 状態管理 ---
-            // (変更なし)
-            const state = {
-                currentIndex: 0,
-                reloadTimer: null,
-                touchStartX: 0,
-                touchStartY: 0
+        function wait(ms) {
+            return new Promise((resolve) => window.setTimeout(resolve, ms));
+        }
+
+        function clampByte(value) {
+            return Math.max(0, Math.min(255, Math.round(value)));
+        }
+
+        function sigmoid(value) {
+            return 1 / (1 + Math.exp(-value));
+        }
+
+        function inverseSigmoid(value) {
+            return Math.log(value / (1 - value));
+        }
+
+        function dimForDegree(degree) {
+            switch (degree) {
+                case 0: return 0;
+                case 1: return 3;
+                case 2: return 8;
+                case 3: return 15;
+                default:
+                    throw new Error(`Unsupported SPZ SH degree: ${degree}`);
+            }
+        }
+
+        function halfToFloat(value) {
+            const sign = (value >> 15) & 0x1;
+            const exponent = (value >> 10) & 0x1f;
+            const mantissa = value & 0x3ff;
+            const signMultiplier = sign === 1 ? -1 : 1;
+
+            if (exponent === 0) {
+                return signMultiplier * Math.pow(2, -14) * mantissa / 1024;
+            }
+            if (exponent === 31) {
+                return mantissa !== 0 ? Number.NaN : signMultiplier * Number.POSITIVE_INFINITY;
+            }
+            return signMultiplier * Math.pow(2, exponent - 15) * (1 + mantissa / 1024);
+        }
+
+        function deserializePackedGaussians(buffer) {
+            if (buffer.byteLength < SPZ_HEADER_SIZE) {
+                throw new Error("SPZ file is too small.");
+            }
+
+            const view = new DataView(buffer);
+            const magic = view.getUint32(0, true);
+            const version = view.getUint32(4, true);
+            const numPoints = view.getUint32(8, true);
+            const shDegree = view.getUint8(12);
+            const fractionalBits = view.getUint8(13);
+            const flags = view.getUint8(14);
+
+            if (magic !== SPZ_MAGIC) {
+                throw new Error("SPZ header not found.");
+            }
+            if (version < 1 || version > 2) {
+                throw new Error(`Unsupported SPZ version: ${version}`);
+            }
+            if (numPoints > SPZ_MAX_POINTS) {
+                throw new Error(`SPZ point count is too large: ${numPoints}`);
+            }
+
+            const shDim = dimForDegree(shDegree);
+            const usesFloat16 = version === 1;
+            const positionsLength = numPoints * 3 * (usesFloat16 ? 2 : 3);
+            const alphasLength = numPoints;
+            const colorsLength = numPoints * 3;
+            const scalesLength = numPoints * 3;
+            const rotationsLength = numPoints * 3;
+            const shLength = numPoints * shDim * 3;
+            const expectedLength = SPZ_HEADER_SIZE + positionsLength + alphasLength + colorsLength + scalesLength + rotationsLength + shLength;
+
+            if (buffer.byteLength !== expectedLength) {
+                throw new Error(`SPZ buffer size mismatch: expected ${expectedLength}, got ${buffer.byteLength}`);
+            }
+
+            const source = new Uint8Array(buffer);
+            let offset = SPZ_HEADER_SIZE;
+            const readSection = (length) => {
+                const slice = source.slice(offset, offset + length);
+                offset += length;
+                return slice;
             };
 
-            // --- 3. DOM要素のキャッシュ ---
-            // (変更なし)
-            const DOM = {
-                iframeWrapper: document.querySelector('.iframe-wrapper'),
-                iframeTarget: document.getElementById('iframe-target'),
-                infoBox: document.getElementById('info-box'),
-                infoTitle: document.getElementById('info-title'),
-                infoDescription: document.getElementById('info-description'),
-                creditDisplay: document.getElementById('credit-display'),
-                contentButtonsWrapper: document.getElementById('content-buttons-wrapper'),
-                prevBtn: document.getElementById('prev-btn'),
-                nextBtn: document.getElementById('next-btn'),
-                mobilePrevBtn: document.getElementById('mobile-prev'),
-                mobileNextBtn: document.getElementById('mobile-next'),
-                sceneCounter: document.getElementById('scene-counter'),
-                listToggleBtn: document.getElementById('list-toggle-btn'),
-                infoToggleBtn: document.getElementById('info-toggle-btn'),
-                fullscreenBtn: document.getElementById('fullscreen-btn'),
-                listModal: document.getElementById('list-modal'),
-                listModalContent: document.getElementById('list-modal-content'),
-                listModalClose: document.getElementById('list-modal-close')
+            return {
+                numPoints,
+                shDegree,
+                fractionalBits,
+                antialiased: (flags & FLAG_ANTIALIASED) !== 0,
+                positions: readSection(positionsLength),
+                alphas: readSection(alphasLength),
+                colors: readSection(colorsLength),
+                scales: readSection(scalesLength),
+                rotations: readSection(rotationsLength),
+                sh: readSection(shLength)
+            };
+        }
+
+        function unpackGaussians(packed) {
+            const numPoints = packed.numPoints;
+            const shDim = dimForDegree(packed.shDegree);
+            const usesFloat16 = packed.positions.length === numPoints * 3 * 2;
+
+            const cloud = {
+                numPoints,
+                shDegree: packed.shDegree,
+                antialiased: packed.antialiased,
+                positions: new Float32Array(numPoints * 3),
+                scales: new Float32Array(numPoints * 3),
+                rotations: new Float32Array(numPoints * 4),
+                alphas: new Float32Array(numPoints),
+                colors: new Float32Array(numPoints * 3),
+                sh: new Float32Array(numPoints * shDim * 3)
             };
 
-            // --- 4. コア機能 ---
-            // (変更なし)
-            const _recreateIframe = (src) => {
-                const oldIframe = DOM.iframeTarget.firstChild;
-                if (oldIframe) {
-                    oldIframe.src = 'about:blank';
-                    try { DOM.iframeTarget.removeChild(oldIframe); } catch (e) { }
+            if (usesFloat16) {
+                const halfData = new Uint16Array(packed.positions.buffer, packed.positions.byteOffset, numPoints * 3);
+                for (let i = 0; i < numPoints * 3; i += 1) {
+                    cloud.positions[i] = halfToFloat(halfData[i]);
                 }
-                setTimeout(() => {
-                    const newIframe = document.createElement('iframe');
-                    newIframe.title = "3DGS Content";
-                    newIframe.setAttribute('allow', 'autoplay; fullscreen');
-                    newIframe.setAttribute('execution-while-out-of-viewport', '');
-                    newIframe.setAttribute('execution-while-not-rendered', '');
-                    DOM.iframeTarget.appendChild(newIframe);
-                    newIframe.src = src;
-                }, 50);
-            };
-            const _manageReloadTimer = () => {
-                if (state.reloadTimer) { clearInterval(state.reloadTimer); state.reloadTimer = null; }
-                const currentContent = contentData[state.currentIndex];
-                if (document.hidden || !currentContent.needsReload) { return; }
-                state.reloadTimer = setInterval(() => { _recreateIframe(currentContent.src); }, currentContent.reloadSeconds * 1000);
-            };
-            const changeContent = (index) => {
-                if (index < 0 || index >= contentData.length) return;
-                state.currentIndex = index;
-                const data = contentData[index];
-                _recreateIframe(data.src);
-                _manageReloadTimer();
-                DOM.infoTitle.textContent = data.title;
-                DOM.infoDescription.textContent = data.description;
-                DOM.creditDisplay.innerHTML = data.credit;
-                _updateUI();
-            };
-            const navigate = (direction) => {
-                const newIndex = (state.currentIndex + direction + contentData.length) % contentData.length;
-                changeContent(newIndex);
-            };
+            } else {
+                const scale = 1 / (1 << packed.fractionalBits);
+                for (let i = 0; i < numPoints * 3; i += 1) {
+                    let fixed32 = packed.positions[i * 3 + 0];
+                    fixed32 |= packed.positions[i * 3 + 1] << 8;
+                    fixed32 |= packed.positions[i * 3 + 2] << 16;
+                    fixed32 |= (fixed32 & 0x800000) ? 0xff000000 : 0;
+                    cloud.positions[i] = fixed32 * scale;
+                }
+            }
 
-            // --- 5. UI更新 ---
-            // (変更なし)
-            const _updateUI = () => {
-                const pcButtons = DOM.contentButtonsWrapper.querySelectorAll('button');
-                pcButtons.forEach((button, index) => { button.classList.toggle('active', index === state.currentIndex); });
-                if (pcButtons[state.currentIndex]) { pcButtons[state.currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }
-                const mobileListItems = DOM.listModalContent.querySelectorAll('.list-item');
-                mobileListItems.forEach((item, index) => { item.classList.toggle('active', index === state.currentIndex); });
-                DOM.sceneCounter.textContent = `${state.currentIndex + 1} / ${contentData.length}`;
-            };
+            for (let i = 0; i < numPoints * 3; i += 1) {
+                cloud.scales[i] = packed.scales[i] / 16 - 10;
+                cloud.colors[i] = ((packed.colors[i] / 255) - 0.5) / SPZ_COLOR_SCALE;
+            }
 
-            // --- 6. イベントリスナーの設定 ---
-            // (変更なし)
-            const _setupEventListeners = () => {
-                DOM.prevBtn.onclick = () => navigate(-1);
-                DOM.nextBtn.onclick = () => navigate(1);
-                DOM.mobilePrevBtn.onclick = () => navigate(-1);
-                DOM.mobileNextBtn.onclick = () => navigate(1);
-                DOM.infoToggleBtn.onclick = () => DOM.infoBox.classList.toggle('visible');
-                DOM.listToggleBtn.onclick = () => DOM.listModal.classList.add('visible');
-                DOM.listModalClose.onclick = () => DOM.listModal.classList.remove('visible');
-                DOM.fullscreenBtn.onclick = () => {
-                    if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => console.error(err)); }
-                    else { document.exitFullscreen(); }
+            for (let i = 0; i < numPoints; i += 1) {
+                const rotationIndex = i * 3;
+                const quaternionIndex = i * 4;
+                const x = packed.rotations[rotationIndex + 0] / 127.5 - 1;
+                const y = packed.rotations[rotationIndex + 1] / 127.5 - 1;
+                const z = packed.rotations[rotationIndex + 2] / 127.5 - 1;
+                const w = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
+
+                cloud.rotations[quaternionIndex + 0] = x;
+                cloud.rotations[quaternionIndex + 1] = y;
+                cloud.rotations[quaternionIndex + 2] = z;
+                cloud.rotations[quaternionIndex + 3] = w;
+                cloud.alphas[i] = inverseSigmoid(packed.alphas[i] / 255);
+            }
+
+            for (let i = 0; i < packed.sh.length; i += 1) {
+                cloud.sh[i] = (packed.sh[i] - 128) / 128;
+            }
+
+            return cloud;
+        }
+
+        function loadSpzCloudFromBuffer(compressedBuffer) {
+            const bytes = new Uint8Array(compressedBuffer);
+            const hasGzipHeader = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+            const payload = hasGzipHeader ? (() => {
+                try {
+                    return gunzipSync(bytes);
+                } catch (error) {
+                    throw new Error(`SPZ gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`);
+                }
+            })() : bytes;
+
+            const packed = deserializePackedGaussians(
+                payload.buffer.slice(
+                    payload.byteOffset,
+                    payload.byteOffset + payload.byteLength
+                )
+            );
+
+            return unpackGaussians(packed);
+        }
+
+        function resetIframe() {
+            const oldIframe = dom.iframeTarget.firstChild;
+            if (!oldIframe) return;
+            oldIframe.src = "about:blank";
+            try {
+                dom.iframeTarget.removeChild(oldIframe);
+            } catch (error) {
+                console.warn(error);
+            }
+        }
+
+        function recreateIframe(src) {
+            resetIframe();
+            window.setTimeout(() => {
+                const iframe = document.createElement("iframe");
+                iframe.title = "3DGS Content";
+                iframe.setAttribute("allow", "autoplay; fullscreen");
+                iframe.setAttribute("execution-while-out-of-viewport", "");
+                iframe.setAttribute("execution-while-not-rendered", "");
+                iframe.src = src;
+                dom.iframeTarget.appendChild(iframe);
+            }, 50);
+        }
+
+        function showLoader(message = "Loading...") {
+            dom.viewerLoaderText.textContent = message;
+            dom.viewerLoader.classList.add("visible");
+            setLoaderProgress(0);
+        }
+
+        function hideLoader() {
+            dom.viewerLoader.classList.remove("visible");
+        }
+
+        function setLoaderProgress(ratio) {
+            const progress = clamp01(ratio);
+            dom.viewerLoaderFill.style.width = `${(progress * 100).toFixed(1)}%`;
+            dom.viewerLoaderProgress.textContent = `${Math.round(progress * 100)}%`;
+        }
+
+        function syncPlaybackUi() {
+            const visible = currentScene().type === "spz";
+            dom.playbackControls.classList.toggle("visible", visible);
+            dom.playbackToggle.textContent = state.playing ? "❚❚" : "▶";
+            dom.playbackToggle.setAttribute("aria-label", state.playing ? "Pause" : "Play");
+            if (!state.draggingSlider) {
+                const progress = state.duration > 0 ? clamp01(state.animationTime / state.duration) : 0;
+                dom.playbackSlider.value = String(progress);
+            }
+        }
+
+        function applyRendererQuality(isLoading) {
+            if (!renderer) return;
+            const pixelRatio = isLoading
+                ? Math.min(window.devicePixelRatio || 1, LOADING_PIXEL_RATIO)
+                : Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+            renderer.setPixelRatio(pixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function disposeRuntime() {
+            if (state.activeSplatObjectUrl) {
+                if (![...splatObjectUrlCache.values()].includes(state.activeSplatObjectUrl)) {
+                    URL.revokeObjectURL(state.activeSplatObjectUrl);
+                }
+                state.activeSplatObjectUrl = null;
+            }
+            if (viewer) {
+                try {
+                    viewer.dispose();
+                } catch (error) {
+                    console.warn(error);
+                }
+            }
+            if (renderer?.domElement?.parentNode === dom.viewerTarget) {
+                dom.viewerTarget.removeChild(renderer.domElement);
+            }
+            viewer = null;
+            controls = null;
+            camera = null;
+            renderer = null;
+        }
+
+        function scheduleReturnToPath() {
+            if (state.interactionEndTimer) {
+                window.clearTimeout(state.interactionEndTimer);
+            }
+            state.interactionEndTimer = window.setTimeout(() => {
+                state.userInteracting = false;
+                state.returningToPath = true;
+                applyFrame(state.frameCursor, false);
+                state.interactionEndTimer = null;
+            }, INTERACTION_END_DELAY_MS);
+        }
+
+        function createRuntime() {
+            renderer = new THREE.WebGLRenderer({
+                antialias: false,
+                alpha: true,
+                powerPreference: "low-power"
+            });
+            renderer.setClearColor(0x000000, 1);
+            applyRendererQuality(true);
+            dom.viewerTarget.appendChild(renderer.domElement);
+
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 3);
+            camera.up.set(0, 1, 0);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.autoRotate = false;
+            controls.target.set(0, 0, 0);
+            controls.addEventListener("start", () => {
+                state.playing = false;
+                state.userInteracting = true;
+                state.returningToPath = false;
+                if (state.interactionEndTimer) {
+                    window.clearTimeout(state.interactionEndTimer);
+                    state.interactionEndTimer = null;
+                }
+                syncPlaybackUi();
+            });
+            controls.addEventListener("end", scheduleReturnToPath);
+            renderer.domElement.addEventListener("wheel", () => {
+                state.playing = false;
+                state.userInteracting = true;
+                state.returningToPath = false;
+                syncPlaybackUi();
+                scheduleReturnToPath();
+            }, { passive: true });
+
+            viewer = new GaussianSplats3D.Viewer({
+                selfDrivenMode: false,
+                renderer,
+                camera,
+                useBuiltInControls: false,
+                ignoreDevicePixelRatio: false,
+                gpuAcceleratedSort: false,
+                sharedMemoryForWorkers: false,
+                integerBasedSort: false,
+                enableSIMDInSort: false,
+                freeIntermediateSplatData: false,
+                sceneRevealMode: GaussianSplats3D.SceneRevealMode.Instant,
+                renderMode: GaussianSplats3D.RenderMode.Always,
+                logLevel: GaussianSplats3D.LogLevel.None,
+                sphericalHarmonicsDegree: 0
+            });
+        }
+
+        async function fetchAsArrayBuffer(url, onProgress) {
+            if (arrayBufferCache.has(url)) {
+                onProgress?.(1);
+                return arrayBufferCache.get(url).slice(0);
+            }
+
+            const response = await fetch(url, { cache: "force-cache" });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch asset: ${response.status}`);
+            }
+            const total = Number(response.headers.get("content-length")) || 0;
+            if (!response.body || !total) {
+                const buffer = await response.arrayBuffer();
+                onProgress?.(1);
+                arrayBufferCache.set(url, buffer.slice(0));
+                return buffer;
+            }
+            const reader = response.body.getReader();
+            const chunks = [];
+            let loaded = 0;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                loaded += value.byteLength;
+                onProgress?.(loaded / total);
+            }
+            const merged = new Uint8Array(loaded);
+            let offset = 0;
+            for (const chunk of chunks) {
+                merged.set(chunk, offset);
+                offset += chunk.byteLength;
+            }
+            onProgress?.(1);
+            const buffer = merged.buffer;
+            arrayBufferCache.set(url, buffer.slice(0));
+            return buffer;
+        }
+
+        function serializeSplatFromSpzCloud(cloud) {
+            const rowLength = 32;
+            const count = cloud.numPoints;
+            const SH_C0 = 0.28209479177387814;
+            const buffer = new ArrayBuffer(rowLength * count);
+            const floatView = new Float32Array(buffer);
+            const byteView = new Uint8Array(buffer);
+
+            for (let index = 0; index < count; index += 1) {
+                const floatBase = index * 8;
+                const posBase = index * 3;
+                const rotBase = index * 4;
+                const byteBase = index * rowLength;
+
+                floatView[floatBase + 0] = cloud.positions[posBase + 0];
+                floatView[floatBase + 1] = cloud.positions[posBase + 1];
+                floatView[floatBase + 2] = cloud.positions[posBase + 2];
+                floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
+                floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
+                floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
+
+                byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
+                byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
+                byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
+                byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
+
+                const qx = cloud.rotations[rotBase + 0];
+                const qy = cloud.rotations[rotBase + 1];
+                const qz = cloud.rotations[rotBase + 2];
+                const qw = cloud.rotations[rotBase + 3];
+                const qLength = Math.hypot(qw, qx, qy, qz) || 1;
+
+                byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
+                byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
+                byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
+                byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+            }
+
+            return buffer;
+        }
+
+        async function loadSpzAsSplatObjectUrl(url, onProgress) {
+            if (splatObjectUrlCache.has(url)) {
+                onProgress?.(1);
+                return splatObjectUrlCache.get(url);
+            }
+
+            const spzBuffer = await fetchAsArrayBuffer(url, (ratio) => onProgress?.(ratio * 0.55));
+            const cloud = loadSpzCloudFromBuffer(spzBuffer);
+            onProgress?.(0.8);
+            const splatBuffer = serializeSplatFromSpzCloud(cloud);
+            onProgress?.(1);
+            const objectUrl = URL.createObjectURL(new Blob([splatBuffer], { type: "application/octet-stream" }));
+            splatObjectUrlCache.set(url, objectUrl);
+            return objectUrl;
+        }
+
+        function makeKirTransform(position, rotationRows) {
+            const mirror = new THREE.Matrix4().makeScale(-1, -1, 1);
+            const rotationMatrix = new THREE.Matrix3().set(
+                rotationRows[0][0], rotationRows[0][1], rotationRows[0][2],
+                rotationRows[1][0], rotationRows[1][1], rotationRows[1][2],
+                rotationRows[2][0], rotationRows[2][1], rotationRows[2][2]
+            );
+            const inverseRotation = rotationMatrix.clone().invert();
+            const translated = new THREE.Vector3(position[0], position[1], position[2]).negate().applyMatrix3(inverseRotation);
+            const transform = new THREE.Matrix4().setFromMatrix3(inverseRotation);
+            transform.setPosition(translated);
+            transform.multiply(mirror);
+            return transform;
+        }
+
+        function parseFrames(json) {
+            if (!Array.isArray(json) || json.length < 2) {
+                throw new Error("Camera data is invalid.");
+            }
+            return json.map((frame) => {
+                const viewMatrix = makeKirTransform(frame.position, frame.rotation).invert();
+                return {
+                    position: new THREE.Vector3().setFromMatrixPosition(viewMatrix),
+                    target: new THREE.Vector3(0, 0, 1).applyMatrix4(viewMatrix),
+                    fy: frame.fy
                 };
-                document.addEventListener('keydown', (event) => {
-                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                        event.preventDefault();
-                        if (document.activeElement) document.activeElement.blur();
-                        navigate(event.key === 'ArrowLeft' ? -1 : 1);
-                    }
-                });
-                DOM.iframeWrapper.addEventListener('touchstart', e => {
-                    state.touchStartX = e.changedTouches[0].screenX;
-                    state.touchStartY = e.changedTouches[0].screenY;
-                }, { passive: true });
-                DOM.iframeWrapper.addEventListener('touchend', e => {
-                    const touchEndX = e.changedTouches[0].screenX;
-                    const touchEndY = e.changedTouches[0].screenY;
-                    const deltaX = touchEndX - state.touchStartX;
-                    const deltaY = touchEndY - state.touchStartY;
-                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) { navigate(deltaX < 0 ? 1 : -1); }
-                }, { passive: true });
-                document.addEventListener('visibilitychange', _manageReloadTimer);
+            });
+        }
+
+        async function loadFrames(cameraPath) {
+            if (frameCache.has(cameraPath)) {
+                return frameCache.get(cameraPath).map((frame) => ({
+                    position: frame.position.clone(),
+                    target: frame.target.clone(),
+                    fy: frame.fy
+                }));
+            }
+
+            const response = await fetch(cameraPath, { cache: "force-cache" });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch camera path: ${response.status}`);
+            }
+            const frames = parseFrames(await response.json());
+            frameCache.set(cameraPath, frames.map((frame) => ({
+                position: frame.position.clone(),
+                target: frame.target.clone(),
+                fy: frame.fy
+            })));
+            return frames;
+        }
+
+        function updateProjection(frame) {
+            if (!frame?.fy || !camera) return camera?.fov ?? 65;
+            const sourceFov = 2 * Math.atan(window.innerHeight / (2 * frame.fy)) * 180 / Math.PI;
+            const fov = sourceFov * FOV_MULTIPLIER;
+            return Number.isFinite(fov) && fov > 1 && fov < 179 ? fov : camera.fov;
+        }
+
+        function rotateModelRoot(root) {
+            if (root?.rotation && typeof root.rotation.z === "number") {
+                root.rotation.z = Math.PI;
+                root.updateMatrixWorld?.(true);
+                return true;
+            }
+            return false;
+        }
+
+        function applyModelOrientation(sceneHandle) {
+            const candidates = [sceneHandle, sceneHandle?.scene, sceneHandle?.splatMesh, viewer?.scene, viewer?.splatMesh];
+            for (const candidate of candidates) {
+                if (rotateModelRoot(candidate)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function buildSampledPath() {
+            if (!state.frames.length) {
+                state.sampledPath = null;
+                return;
+            }
+            const sampleCount = Math.max(Math.ceil(state.duration * TARGET_FPS * PATH_SAMPLE_MULTIPLIER), 360);
+            const px = state.frames.map((frame) => frame.position.x);
+            const py = state.frames.map((frame) => frame.position.y);
+            const pz = state.frames.map((frame) => frame.position.z);
+            const tx = state.frames.map((frame) => frame.target.x);
+            const ty = state.frames.map((frame) => frame.target.y);
+            const tz = state.frames.map((frame) => frame.target.z);
+            state.sampledPath = new Array(sampleCount);
+
+            for (let index = 0; index < sampleCount; index += 1) {
+                const normalized = sampleCount > 1 ? index / (sampleCount - 1) : 0;
+                const eased = sinusoidalInOut(normalized);
+                const frameIndex = Math.min(Math.round(normalized * (state.frames.length - 1)), state.frames.length - 1);
+                const currentFrame = state.frames[frameIndex];
+                state.sampledPath[index] = {
+                    position: new THREE.Vector3(
+                        bezierInterpolate(px, eased),
+                        bezierInterpolate(py, eased),
+                        bezierInterpolate(pz, eased)
+                    ),
+                    target: new THREE.Vector3(
+                        bezierInterpolate(tx, eased),
+                        bezierInterpolate(ty, eased),
+                        bezierInterpolate(tz, eased)
+                    ),
+                    fov: updateProjection(currentFrame)
+                };
+            }
+        }
+
+        function sampleFrameState(cursor) {
+            if (!state.frames.length || !state.sampledPath?.length) return null;
+            const maxIndex = state.frames.length - 1;
+            const normalized = maxIndex > 0 ? clamp01(cursor / maxIndex) : 0;
+            const pathMaxIndex = state.sampledPath.length - 1;
+            const pathCursor = normalized * pathMaxIndex;
+            const baseIndex = Math.floor(pathCursor);
+            const nextIndex = Math.min(baseIndex + 1, pathMaxIndex);
+            const mix = smootherstep(pathCursor - baseIndex);
+            const base = state.sampledPath[baseIndex];
+            const next = state.sampledPath[nextIndex];
+            return {
+                position: base.position.clone().lerp(next.position, mix),
+                target: base.target.clone().lerp(next.target, mix),
+                fov: lerp(base.fov, next.fov, mix)
             };
+        }
 
-            // --- 7. 初期化 ---
-            // (変更なし)
-            const init = () => {
-                contentData.forEach((item, index) => {
-                    const pcButton = document.createElement('button');
-                    pcButton.textContent = item.title;
-                    pcButton.onclick = () => changeContent(index);
-                    DOM.contentButtonsWrapper.appendChild(pcButton);
+        function applyFrame(cursor, immediate = false) {
+            const sampled = sampleFrameState(cursor);
+            if (!sampled) return;
+            state.desiredCameraPosition.copy(sampled.position);
+            state.desiredControlTarget.copy(sampled.target);
+            state.desiredFov = sampled.fov;
+            if (immediate && camera && controls) {
+                camera.up.set(0, 1, 0);
+                camera.position.copy(state.desiredCameraPosition);
+                controls.target.copy(state.desiredControlTarget);
+                camera.lookAt(controls.target);
+                camera.fov = state.desiredFov;
+                camera.updateProjectionMatrix();
+                camera.updateMatrixWorld();
+                controls.update();
+            }
+        }
 
-                    const mobileListItem = document.createElement('div');
-                    mobileListItem.className = 'list-item';
-                    mobileListItem.textContent = item.title;
-                    mobileListItem.onclick = () => {
-                        changeContent(index);
-                        DOM.listModal.classList.remove('visible');
-                    };
-                    DOM.listModalContent.appendChild(mobileListItem);
+        function updateSmoothedCamera(deltaSeconds) {
+            if (!camera || !controls) return;
+            if (state.userInteracting) {
+                controls.update();
+                return;
+            }
+            const strength = state.returningToPath ? RETURN_SPRING_STRENGTH : CAMERA_SMOOTHNESS;
+            const alpha = Math.min(Math.max(1 - Math.exp(-strength * deltaSeconds), 0), 1);
+            camera.up.set(0, 1, 0);
+            camera.position.lerp(state.desiredCameraPosition, alpha);
+            controls.target.lerp(state.desiredControlTarget, alpha);
+            camera.fov = lerp(camera.fov, state.desiredFov, alpha);
+            camera.updateProjectionMatrix();
+            camera.lookAt(controls.target);
+            camera.updateMatrixWorld();
+            controls.update();
+
+            if (state.returningToPath) {
+                const positionError = camera.position.distanceToSquared(state.desiredCameraPosition);
+                const targetError = controls.target.distanceToSquared(state.desiredControlTarget);
+                const fovError = Math.abs(camera.fov - state.desiredFov);
+                if (positionError < RETURN_COMPLETE_EPSILON && targetError < RETURN_COMPLETE_EPSILON && fovError < 0.05) {
+                    state.returningToPath = false;
+                }
+            }
+        }
+
+        function updateUi() {
+            const buttons = dom.contentButtonsWrapper.querySelectorAll("button");
+            buttons.forEach((button, index) => {
+                button.classList.toggle("active", index === state.currentIndex);
+            });
+            if (buttons[state.currentIndex]) {
+                buttons[state.currentIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }
+            const mobileItems = dom.listModalContent.querySelectorAll(".list-item");
+            mobileItems.forEach((item, index) => {
+                item.classList.toggle("active", index === state.currentIndex);
+            });
+            dom.sceneCounter.textContent = `${state.currentIndex + 1} / ${scenes.length}`;
+            syncPlaybackUi();
+        }
+
+        async function loadSpzScene(scene) {
+            const token = ++state.loadToken;
+            state.playing = false;
+            state.frameCursor = 0;
+            state.animationTime = 0;
+            state.duration = LOOP_DURATION_SECONDS;
+            state.frames = [];
+            state.sampledPath = null;
+            state.draggingSlider = false;
+            state.userInteracting = false;
+            state.returningToPath = false;
+            state.lastTick = 0;
+            state.lastRenderTime = 0;
+            if (state.interactionEndTimer) {
+                window.clearTimeout(state.interactionEndTimer);
+                state.interactionEndTimer = null;
+            }
+
+            dom.contentHost.classList.add("mode-spz");
+            resetIframe();
+            disposeRuntime();
+            createRuntime();
+            showLoader("Loading...");
+            syncPlaybackUi();
+
+            try {
+                const assetObjectUrl = await loadSpzAsSplatObjectUrl(scene.assetPath, (ratio) => {
+                    if (ratio >= 0.55) {
+                        dom.viewerLoaderText.textContent = "Converting SPZ...";
+                    }
+                    setLoaderProgress(Math.max(0.06, ratio));
                 });
-                _setupEventListeners();
-                if (contentData.length > 0) {
-                    changeContent(0);
+                if (token !== state.loadToken) return;
+                state.activeSplatObjectUrl = assetObjectUrl;
+
+                await viewer.addSplatScene(assetObjectUrl, {
+                    format: GaussianSplats3D.SceneFormat.Splat,
+                    showLoadingUI: false,
+                    progressiveLoad: true,
+                    splatAlphaRemovalThreshold: 1,
+                    onProgress: null
+                });
+                if (token !== state.loadToken) return;
+                applyModelOrientation(viewer);
+
+                dom.viewerLoaderText.textContent = "Loading camera path...";
+                setLoaderProgress(0.95);
+                state.frames = await loadFrames(scene.cameraPath);
+                if (token !== state.loadToken) return;
+                buildSampledPath();
+                applyFrame(0, true);
+                setLoaderProgress(1);
+                applyRendererQuality(false);
+                hideLoader();
+                await wait(AUTOPLAY_START_DELAY_MS);
+                if (token !== state.loadToken) return;
+                state.playing = true;
+                syncPlaybackUi();
+            } catch (error) {
+                console.error(error);
+                dom.viewerLoaderText.textContent = "Failed to load scene";
+                setLoaderProgress(1);
+            }
+        }
+
+        function loadIframeScene(scene) {
+            state.loadToken += 1;
+            state.playing = false;
+            state.frames = [];
+            state.sampledPath = null;
+            state.draggingSlider = false;
+            dom.contentHost.classList.remove("mode-spz");
+            hideLoader();
+            disposeRuntime();
+            recreateIframe(scene.src);
+            syncPlaybackUi();
+        }
+
+        function changeScene(index) {
+            if (index < 0 || index >= scenes.length) return;
+            state.currentIndex = index;
+            updateSceneUrl(index);
+            const scene = currentScene();
+            dom.infoTitle.textContent = scene.title;
+            dom.infoDescription.textContent = scene.description;
+            dom.creditDisplay.innerHTML = scene.credit;
+            if (scene.type === "spz") {
+                loadSpzScene(scene);
+            } else {
+                loadIframeScene(scene);
+            }
+            updateUi();
+        }
+
+        function navigate(direction) {
+            const nextIndex = (state.currentIndex + direction + scenes.length) % scenes.length;
+            changeScene(nextIndex);
+        }
+
+        function togglePlayback() {
+            if (!state.frames.length) return;
+            state.playing = !state.playing;
+            state.userInteracting = false;
+            state.returningToPath = false;
+            if (state.interactionEndTimer) {
+                window.clearTimeout(state.interactionEndTimer);
+                state.interactionEndTimer = null;
+            }
+            if (state.playing && state.animationTime >= state.duration) {
+                state.animationTime = 0;
+                state.frameCursor = 0;
+                applyFrame(0, true);
+            }
+            syncPlaybackUi();
+        }
+
+        function renderLoop(now) {
+            requestAnimationFrame(renderLoop);
+            if (!viewer || !camera || !controls || !renderer) return;
+
+            const frameIntervalMs = 1000 / TARGET_FPS;
+            if (state.lastRenderTime && now - state.lastRenderTime < frameIntervalMs) return;
+            state.lastRenderTime = now;
+
+            if (!state.lastTick) state.lastTick = now;
+            const deltaSeconds = Math.min((now - state.lastTick) / 1000, 0.1);
+            state.lastTick = now;
+
+            if (state.playing && state.frames.length > 1) {
+                state.animationTime += deltaSeconds;
+                if (state.animationTime >= state.duration) {
+                    state.animationTime = 0;
+                    state.frameCursor = 0;
+                    applyFrame(0, true);
+                }
+                const normalized = Math.min(state.animationTime / state.duration, 1);
+                state.frameCursor = normalized * (state.frames.length - 1);
+                applyFrame(state.frameCursor);
+            }
+
+            updateSmoothedCamera(deltaSeconds);
+            syncPlaybackUi();
+            viewer.update();
+            viewer.render();
+        }
+
+        function setupUi() {
+            scenes.forEach((scene, index) => {
+                const button = document.createElement("button");
+                button.textContent = scene.title;
+                button.onclick = () => changeScene(index);
+                dom.contentButtonsWrapper.appendChild(button);
+
+                const item = document.createElement("div");
+                item.className = "list-item";
+                item.textContent = scene.title;
+                item.onclick = () => {
+                    changeScene(index);
+                    dom.listModal.classList.remove("visible");
+                };
+                dom.listModalContent.appendChild(item);
+            });
+
+            dom.prevBtn.onclick = () => navigate(-1);
+            dom.nextBtn.onclick = () => navigate(1);
+            dom.mobilePrevBtn.onclick = () => navigate(-1);
+            dom.mobileNextBtn.onclick = () => navigate(1);
+            dom.infoToggleBtn.onclick = () => dom.infoBox.classList.toggle("visible");
+            dom.listToggleBtn.onclick = () => dom.listModal.classList.add("visible");
+            dom.listModalClose.onclick = () => dom.listModal.classList.remove("visible");
+            dom.fullscreenBtn.onclick = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch((error) => console.error(error));
+                } else {
+                    document.exitFullscreen();
                 }
             };
+            dom.playbackToggle.onclick = () => togglePlayback();
+            dom.playbackSlider.addEventListener("input", () => {
+                if (!state.frames.length) return;
+                state.draggingSlider = true;
+                state.playing = false;
+                state.userInteracting = false;
+                state.returningToPath = false;
+                if (state.interactionEndTimer) {
+                    window.clearTimeout(state.interactionEndTimer);
+                    state.interactionEndTimer = null;
+                }
+                const progress = Number(dom.playbackSlider.value);
+                state.animationTime = progress * state.duration;
+                state.frameCursor = progress * Math.max(state.frames.length - 1, 0);
+                applyFrame(state.frameCursor, true);
+                syncPlaybackUi();
+            });
+            dom.playbackSlider.addEventListener("change", () => {
+                state.draggingSlider = false;
+                syncPlaybackUi();
+            });
 
-            return { init: init };
-        })();
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                    event.preventDefault();
+                    if (document.activeElement) document.activeElement.blur();
+                    navigate(event.key === "ArrowLeft" ? -1 : 1);
+                }
+            });
 
-        document.addEventListener('DOMContentLoaded', App.init);
+            window.addEventListener("resize", () => {
+                if (!camera || !renderer) return;
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                applyRendererQuality(dom.viewerLoader.classList.contains("visible"));
+            });
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    state.playing = false;
+                } else if (currentScene().type === "spz" && state.frames.length > 1) {
+                    state.playing = true;
+                }
+            });
+        }
+
+        setupUi();
+        renderLoop(0);
+        changeScene(getSceneIndexFromUrl());
     </script>
 </body>
 
