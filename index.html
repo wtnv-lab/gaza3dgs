@@ -748,16 +748,261 @@
         const RETURN_SPRING_STRENGTH = 6;
         const RETURN_COMPLETE_EPSILON = 0.01;
         const INTERACTION_END_DELAY_MS = 220;
-        const TARGET_FPS = 60;
-        const MAX_PIXEL_RATIO = 1.25;
-        const LOADING_PIXEL_RATIO = 0.75;
+        const IS_COARSE_POINTER = window.matchMedia("(pointer: coarse)").matches;
+        const IS_LOW_POWER_DEVICE = IS_COARSE_POINTER || (navigator.hardwareConcurrency || 4) <= 4;
+        const TARGET_FPS = IS_LOW_POWER_DEVICE ? 30 : 45;
+        const MAX_PIXEL_RATIO = IS_LOW_POWER_DEVICE ? 0.9 : 1.0;
+        const LOADING_PIXEL_RATIO = 0.66;
         const AUTOPLAY_START_DELAY_MS = 200;
-        const PATH_SAMPLE_MULTIPLIER = 3;
+        const PATH_SAMPLE_MULTIPLIER = 2;
+        const FOV_UPDATE_EPSILON = 0.02;
         const SPZ_MAGIC = 0x5053474e;
         const FLAG_ANTIALIASED = 0x1;
         const SPZ_HEADER_SIZE = 16;
         const SPZ_COLOR_SCALE = 0.15;
         const SPZ_MAX_POINTS = 10000000;
+        const SPZ_WORKER_SOURCE = `
+            import { gunzipSync } from "https://unpkg.com/fflate@0.8.2/esm/browser.js";
+
+            const SPZ_MAGIC = ${SPZ_MAGIC};
+            const FLAG_ANTIALIASED = ${FLAG_ANTIALIASED};
+            const SPZ_HEADER_SIZE = ${SPZ_HEADER_SIZE};
+            const SPZ_COLOR_SCALE = ${SPZ_COLOR_SCALE};
+            const SPZ_MAX_POINTS = ${SPZ_MAX_POINTS};
+
+            function clampByte(value) {
+                return Math.max(0, Math.min(255, Math.round(value)));
+            }
+
+            function sigmoid(value) {
+                return 1 / (1 + Math.exp(-value));
+            }
+
+            function inverseSigmoid(value) {
+                return Math.log(value / (1 - value));
+            }
+
+            function dimForDegree(degree) {
+                switch (degree) {
+                    case 0: return 0;
+                    case 1: return 3;
+                    case 2: return 8;
+                    case 3: return 15;
+                    default:
+                        throw new Error(\`Unsupported SPZ SH degree: \${degree}\`);
+                }
+            }
+
+            function halfToFloat(value) {
+                const sign = (value >> 15) & 0x1;
+                const exponent = (value >> 10) & 0x1f;
+                const mantissa = value & 0x3ff;
+                const signMultiplier = sign === 1 ? -1 : 1;
+
+                if (exponent === 0) {
+                    return signMultiplier * Math.pow(2, -14) * mantissa / 1024;
+                }
+                if (exponent === 31) {
+                    return mantissa !== 0 ? Number.NaN : signMultiplier * Number.POSITIVE_INFINITY;
+                }
+                return signMultiplier * Math.pow(2, exponent - 15) * (1 + mantissa / 1024);
+            }
+
+            function deserializePackedGaussians(buffer) {
+                if (buffer.byteLength < SPZ_HEADER_SIZE) {
+                    throw new Error("SPZ file is too small.");
+                }
+
+                const view = new DataView(buffer);
+                const magic = view.getUint32(0, true);
+                const version = view.getUint32(4, true);
+                const numPoints = view.getUint32(8, true);
+                const shDegree = view.getUint8(12);
+                const fractionalBits = view.getUint8(13);
+                const flags = view.getUint8(14);
+
+                if (magic !== SPZ_MAGIC) {
+                    throw new Error("SPZ header not found.");
+                }
+                if (version < 1 || version > 2) {
+                    throw new Error(\`Unsupported SPZ version: \${version}\`);
+                }
+                if (numPoints > SPZ_MAX_POINTS) {
+                    throw new Error(\`SPZ point count is too large: \${numPoints}\`);
+                }
+
+                const shDim = dimForDegree(shDegree);
+                const usesFloat16 = version === 1;
+                const positionsLength = numPoints * 3 * (usesFloat16 ? 2 : 3);
+                const alphasLength = numPoints;
+                const colorsLength = numPoints * 3;
+                const scalesLength = numPoints * 3;
+                const rotationsLength = numPoints * 3;
+                const shLength = numPoints * shDim * 3;
+                const expectedLength = SPZ_HEADER_SIZE + positionsLength + alphasLength + colorsLength + scalesLength + rotationsLength + shLength;
+
+                if (buffer.byteLength !== expectedLength) {
+                    throw new Error(\`SPZ buffer size mismatch: expected \${expectedLength}, got \${buffer.byteLength}\`);
+                }
+
+                const source = new Uint8Array(buffer);
+                let offset = SPZ_HEADER_SIZE;
+                const readSection = (length) => {
+                    const slice = source.slice(offset, offset + length);
+                    offset += length;
+                    return slice;
+                };
+
+                return {
+                    numPoints,
+                    shDegree,
+                    fractionalBits,
+                    antialiased: (flags & FLAG_ANTIALIASED) !== 0,
+                    positions: readSection(positionsLength),
+                    alphas: readSection(alphasLength),
+                    colors: readSection(colorsLength),
+                    scales: readSection(scalesLength),
+                    rotations: readSection(rotationsLength),
+                    sh: readSection(shLength)
+                };
+            }
+
+            function unpackGaussians(packed) {
+                const numPoints = packed.numPoints;
+                const shDim = dimForDegree(packed.shDegree);
+                const usesFloat16 = packed.positions.length === numPoints * 3 * 2;
+
+                const cloud = {
+                    numPoints,
+                    shDegree: packed.shDegree,
+                    antialiased: packed.antialiased,
+                    positions: new Float32Array(numPoints * 3),
+                    scales: new Float32Array(numPoints * 3),
+                    rotations: new Float32Array(numPoints * 4),
+                    alphas: new Float32Array(numPoints),
+                    colors: new Float32Array(numPoints * 3),
+                    sh: new Float32Array(numPoints * shDim * 3)
+                };
+
+                if (usesFloat16) {
+                    const halfData = new Uint16Array(packed.positions.buffer, packed.positions.byteOffset, numPoints * 3);
+                    for (let i = 0; i < numPoints * 3; i += 1) {
+                        cloud.positions[i] = halfToFloat(halfData[i]);
+                    }
+                } else {
+                    const scale = 1 / (1 << packed.fractionalBits);
+                    for (let i = 0; i < numPoints * 3; i += 1) {
+                        let fixed32 = packed.positions[i * 3 + 0];
+                        fixed32 |= packed.positions[i * 3 + 1] << 8;
+                        fixed32 |= packed.positions[i * 3 + 2] << 16;
+                        fixed32 |= (fixed32 & 0x800000) ? 0xff000000 : 0;
+                        cloud.positions[i] = fixed32 * scale;
+                    }
+                }
+
+                for (let i = 0; i < numPoints * 3; i += 1) {
+                    cloud.scales[i] = packed.scales[i] / 16 - 10;
+                    cloud.colors[i] = ((packed.colors[i] / 255) - 0.5) / SPZ_COLOR_SCALE;
+                }
+
+                for (let i = 0; i < numPoints; i += 1) {
+                    const rotationIndex = i * 3;
+                    const quaternionIndex = i * 4;
+                    const x = packed.rotations[rotationIndex + 0] / 127.5 - 1;
+                    const y = packed.rotations[rotationIndex + 1] / 127.5 - 1;
+                    const z = packed.rotations[rotationIndex + 2] / 127.5 - 1;
+                    const w = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
+
+                    cloud.rotations[quaternionIndex + 0] = x;
+                    cloud.rotations[quaternionIndex + 1] = y;
+                    cloud.rotations[quaternionIndex + 2] = z;
+                    cloud.rotations[quaternionIndex + 3] = w;
+                    cloud.alphas[i] = inverseSigmoid(packed.alphas[i] / 255);
+                }
+
+                for (let i = 0; i < packed.sh.length; i += 1) {
+                    cloud.sh[i] = (packed.sh[i] - 128) / 128;
+                }
+
+                return cloud;
+            }
+
+            function loadSpzCloudFromBuffer(compressedBuffer) {
+                const bytes = new Uint8Array(compressedBuffer);
+                const hasGzipHeader = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+                const payload = hasGzipHeader ? (() => {
+                    try {
+                        return gunzipSync(bytes);
+                    } catch (error) {
+                        throw new Error(\`SPZ gzip decompression failed: \${error instanceof Error ? error.message : String(error)}\`);
+                    }
+                })() : bytes;
+
+                const packed = deserializePackedGaussians(
+                    payload.buffer.slice(
+                        payload.byteOffset,
+                        payload.byteOffset + payload.byteLength
+                    )
+                );
+
+                return unpackGaussians(packed);
+            }
+
+            function serializeSplatFromSpzCloud(cloud) {
+                const rowLength = 32;
+                const count = cloud.numPoints;
+                const SH_C0 = 0.28209479177387814;
+                const buffer = new ArrayBuffer(rowLength * count);
+                const floatView = new Float32Array(buffer);
+                const byteView = new Uint8Array(buffer);
+
+                for (let index = 0; index < count; index += 1) {
+                    const floatBase = index * 8;
+                    const posBase = index * 3;
+                    const rotBase = index * 4;
+                    const byteBase = index * rowLength;
+
+                    floatView[floatBase + 0] = cloud.positions[posBase + 0];
+                    floatView[floatBase + 1] = cloud.positions[posBase + 1];
+                    floatView[floatBase + 2] = cloud.positions[posBase + 2];
+                    floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
+                    floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
+                    floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
+
+                    byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
+                    byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
+                    byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
+                    byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
+
+                    const qx = cloud.rotations[rotBase + 0];
+                    const qy = cloud.rotations[rotBase + 1];
+                    const qz = cloud.rotations[rotBase + 2];
+                    const qw = cloud.rotations[rotBase + 3];
+                    const qLength = Math.hypot(qw, qx, qy, qz) || 1;
+
+                    byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
+                    byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
+                    byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
+                    byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+                }
+
+                return buffer;
+            }
+
+            self.onmessage = (event) => {
+                const { id, compressedBuffer } = event.data;
+                try {
+                    const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+                    const splatBuffer = serializeSplatFromSpzCloud(cloud);
+                    self.postMessage({ id, splatBuffer }, [splatBuffer]);
+                } catch (error) {
+                    self.postMessage({
+                        id,
+                        error: error instanceof Error ? error.message : String(error)
+                    });
+                }
+            };
+        `;
 
         const scenes = [
             {
@@ -856,7 +1101,9 @@
             draggingSlider: false,
             userInteracting: false,
             returningToPath: false,
-            interactionEndTimer: null
+            interactionEndTimer: null,
+            playbackUiDirty: true,
+            renderRequested: true
         };
 
         const dom = {
@@ -896,6 +1143,15 @@
         const arrayBufferCache = new Map();
         const splatObjectUrlCache = new Map();
         const frameCache = new Map();
+        const spzSampleState = {
+            position: new THREE.Vector3(),
+            target: new THREE.Vector3(),
+            fov: 65
+        };
+        let spzWorker = null;
+        let spzWorkerUrl = null;
+        let spzWorkerTaskId = 0;
+        const spzWorkerPending = new Map();
 
         function currentScene() {
             return scenes[state.currentIndex];
@@ -917,6 +1173,14 @@
 
         function clamp01(value) {
             return Math.max(0, Math.min(value, 1));
+        }
+
+        function markPlaybackUiDirty() {
+            state.playbackUiDirty = true;
+        }
+
+        function requestRender() {
+            state.renderRequested = true;
         }
 
         function lerp(a, b, t) {
@@ -1124,6 +1388,47 @@
             return unpackGaussians(packed);
         }
 
+        function serializeSplatFromSpzCloud(cloud) {
+            const rowLength = 32;
+            const count = cloud.numPoints;
+            const SH_C0 = 0.28209479177387814;
+            const buffer = new ArrayBuffer(rowLength * count);
+            const floatView = new Float32Array(buffer);
+            const byteView = new Uint8Array(buffer);
+
+            for (let index = 0; index < count; index += 1) {
+                const floatBase = index * 8;
+                const posBase = index * 3;
+                const rotBase = index * 4;
+                const byteBase = index * rowLength;
+
+                floatView[floatBase + 0] = cloud.positions[posBase + 0];
+                floatView[floatBase + 1] = cloud.positions[posBase + 1];
+                floatView[floatBase + 2] = cloud.positions[posBase + 2];
+                floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
+                floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
+                floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
+
+                byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
+                byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
+                byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
+                byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
+
+                const qx = cloud.rotations[rotBase + 0];
+                const qy = cloud.rotations[rotBase + 1];
+                const qz = cloud.rotations[rotBase + 2];
+                const qw = cloud.rotations[rotBase + 3];
+                const qLength = Math.hypot(qw, qx, qy, qz) || 1;
+
+                byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
+                byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
+                byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
+                byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+            }
+
+            return buffer;
+        }
+
         function resetIframe() {
             const oldIframe = dom.iframeTarget.firstChild;
             if (!oldIframe) return;
@@ -1152,10 +1457,12 @@
             dom.viewerLoaderText.textContent = message;
             dom.viewerLoader.classList.add("visible");
             setLoaderProgress(0);
+            requestRender();
         }
 
         function hideLoader() {
             dom.viewerLoader.classList.remove("visible");
+            requestRender();
         }
 
         function setLoaderProgress(ratio) {
@@ -1175,6 +1482,12 @@
             }
         }
 
+        function flushPlaybackUi() {
+            if (!state.playbackUiDirty) return;
+            syncPlaybackUi();
+            state.playbackUiDirty = false;
+        }
+
         function applyRendererQuality(isLoading) {
             if (!renderer) return;
             const pixelRatio = isLoading
@@ -1182,6 +1495,7 @@
                 : Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
             renderer.setPixelRatio(pixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
+            requestRender();
         }
 
         function disposeRuntime() {
@@ -1205,6 +1519,7 @@
             controls = null;
             camera = null;
             renderer = null;
+            requestRender();
         }
 
         function scheduleReturnToPath() {
@@ -1216,6 +1531,8 @@
                 state.returningToPath = true;
                 applyFrame(state.frameCursor, false);
                 state.interactionEndTimer = null;
+                markPlaybackUiDirty();
+                requestRender();
             }, INTERACTION_END_DELAY_MS);
         }
 
@@ -1246,14 +1563,16 @@
                     window.clearTimeout(state.interactionEndTimer);
                     state.interactionEndTimer = null;
                 }
-                syncPlaybackUi();
+                markPlaybackUiDirty();
+                requestRender();
             });
             controls.addEventListener("end", scheduleReturnToPath);
             renderer.domElement.addEventListener("wheel", () => {
                 state.playing = false;
                 state.userInteracting = true;
                 state.returningToPath = false;
-                syncPlaybackUi();
+                markPlaybackUiDirty();
+                requestRender();
                 scheduleReturnToPath();
             }, { passive: true });
 
@@ -1314,45 +1633,59 @@
             return buffer;
         }
 
-        function serializeSplatFromSpzCloud(cloud) {
-            const rowLength = 32;
-            const count = cloud.numPoints;
-            const SH_C0 = 0.28209479177387814;
-            const buffer = new ArrayBuffer(rowLength * count);
-            const floatView = new Float32Array(buffer);
-            const byteView = new Uint8Array(buffer);
+        function getSpzWorker() {
+            if (spzWorker) return spzWorker;
+            spzWorkerUrl = URL.createObjectURL(new Blob([SPZ_WORKER_SOURCE], { type: "text/javascript" }));
+            spzWorker = new Worker(spzWorkerUrl, { type: "module" });
+            spzWorker.onmessage = (event) => {
+                const { id, splatBuffer, error } = event.data;
+                const pending = spzWorkerPending.get(id);
+                if (!pending) return;
+                spzWorkerPending.delete(id);
+                if (error) {
+                    pending.reject(new Error(error));
+                    return;
+                }
+                pending.resolve(splatBuffer);
+            };
+            spzWorker.onerror = (event) => {
+                const error = new Error(event.message || "SPZ worker failed.");
+                for (const { reject } of spzWorkerPending.values()) {
+                    reject(error);
+                }
+                spzWorkerPending.clear();
+                spzWorker.terminate();
+                spzWorker = null;
+                if (spzWorkerUrl) {
+                    URL.revokeObjectURL(spzWorkerUrl);
+                    spzWorkerUrl = null;
+                }
+            };
+            return spzWorker;
+        }
 
-            for (let index = 0; index < count; index += 1) {
-                const floatBase = index * 8;
-                const posBase = index * 3;
-                const rotBase = index * 4;
-                const byteBase = index * rowLength;
+        function convertSpzBufferInWorker(compressedBuffer) {
+            return new Promise((resolve, reject) => {
+                const worker = getSpzWorker();
+                const id = ++spzWorkerTaskId;
+                spzWorkerPending.set(id, { resolve, reject });
+                worker.postMessage({ id, compressedBuffer }, [compressedBuffer]);
+            });
+        }
 
-                floatView[floatBase + 0] = cloud.positions[posBase + 0];
-                floatView[floatBase + 1] = cloud.positions[posBase + 1];
-                floatView[floatBase + 2] = cloud.positions[posBase + 2];
-                floatView[floatBase + 3] = Math.exp(cloud.scales[posBase + 0]);
-                floatView[floatBase + 4] = Math.exp(cloud.scales[posBase + 1]);
-                floatView[floatBase + 5] = Math.exp(cloud.scales[posBase + 2]);
-
-                byteView[byteBase + 24] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 0]) * 255);
-                byteView[byteBase + 25] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 1]) * 255);
-                byteView[byteBase + 26] = clampByte((0.5 + SH_C0 * cloud.colors[posBase + 2]) * 255);
-                byteView[byteBase + 27] = clampByte(sigmoid(cloud.alphas[index]) * 255);
-
-                const qx = cloud.rotations[rotBase + 0];
-                const qy = cloud.rotations[rotBase + 1];
-                const qz = cloud.rotations[rotBase + 2];
-                const qw = cloud.rotations[rotBase + 3];
-                const qLength = Math.hypot(qw, qx, qy, qz) || 1;
-
-                byteView[byteBase + 28] = clampByte((qw / qLength) * 128 + 128);
-                byteView[byteBase + 29] = clampByte((qx / qLength) * 128 + 128);
-                byteView[byteBase + 30] = clampByte((qy / qLength) * 128 + 128);
-                byteView[byteBase + 31] = clampByte((qz / qLength) * 128 + 128);
+        async function convertSpzBuffer(compressedBuffer) {
+            if (typeof Worker === "undefined") {
+                const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+                return serializeSplatFromSpzCloud(cloud);
             }
 
-            return buffer;
+            try {
+                return await convertSpzBufferInWorker(compressedBuffer);
+            } catch (error) {
+                console.warn("SPZ worker conversion failed, falling back to main thread.", error);
+                const cloud = loadSpzCloudFromBuffer(compressedBuffer);
+                return serializeSplatFromSpzCloud(cloud);
+            }
         }
 
         async function loadSpzAsSplatObjectUrl(url, onProgress) {
@@ -1362,9 +1695,8 @@
             }
 
             const spzBuffer = await fetchAsArrayBuffer(url, (ratio) => onProgress?.(ratio * 0.55));
-            const cloud = loadSpzCloudFromBuffer(spzBuffer);
+            const splatBuffer = await convertSpzBuffer(spzBuffer);
             onProgress?.(0.8);
-            const splatBuffer = serializeSplatFromSpzCloud(cloud);
             onProgress?.(1);
             const objectUrl = URL.createObjectURL(new Blob([splatBuffer], { type: "application/octet-stream" }));
             splatObjectUrlCache.set(url, objectUrl);
@@ -1494,11 +1826,10 @@
             const mix = smootherstep(pathCursor - baseIndex);
             const base = state.sampledPath[baseIndex];
             const next = state.sampledPath[nextIndex];
-            return {
-                position: base.position.clone().lerp(next.position, mix),
-                target: base.target.clone().lerp(next.target, mix),
-                fov: lerp(base.fov, next.fov, mix)
-            };
+            spzSampleState.position.copy(base.position).lerp(next.position, mix);
+            spzSampleState.target.copy(base.target).lerp(next.target, mix);
+            spzSampleState.fov = lerp(base.fov, next.fov, mix);
+            return spzSampleState;
         }
 
         function applyFrame(cursor, immediate = false) {
@@ -1507,13 +1838,16 @@
             state.desiredCameraPosition.copy(sampled.position);
             state.desiredControlTarget.copy(sampled.target);
             state.desiredFov = sampled.fov;
+            requestRender();
             if (immediate && camera && controls) {
                 camera.up.set(0, 1, 0);
                 camera.position.copy(state.desiredCameraPosition);
                 controls.target.copy(state.desiredControlTarget);
                 camera.lookAt(controls.target);
-                camera.fov = state.desiredFov;
-                camera.updateProjectionMatrix();
+                if (Math.abs(camera.fov - state.desiredFov) > FOV_UPDATE_EPSILON) {
+                    camera.fov = state.desiredFov;
+                    camera.updateProjectionMatrix();
+                }
                 camera.updateMatrixWorld();
                 controls.update();
             }
@@ -1530,8 +1864,11 @@
             camera.up.set(0, 1, 0);
             camera.position.lerp(state.desiredCameraPosition, alpha);
             controls.target.lerp(state.desiredControlTarget, alpha);
-            camera.fov = lerp(camera.fov, state.desiredFov, alpha);
-            camera.updateProjectionMatrix();
+            const nextFov = lerp(camera.fov, state.desiredFov, alpha);
+            if (Math.abs(camera.fov - nextFov) > FOV_UPDATE_EPSILON) {
+                camera.fov = nextFov;
+                camera.updateProjectionMatrix();
+            }
             camera.lookAt(controls.target);
             camera.updateMatrixWorld();
             controls.update();
@@ -1559,7 +1896,7 @@
                 item.classList.toggle("active", index === state.currentIndex);
             });
             dom.sceneCounter.textContent = `${state.currentIndex + 1} / ${scenes.length}`;
-            syncPlaybackUi();
+            markPlaybackUiDirty();
         }
 
         async function loadSpzScene(scene) {
@@ -1575,6 +1912,7 @@
             state.returningToPath = false;
             state.lastTick = 0;
             state.lastRenderTime = 0;
+            state.renderRequested = true;
             if (state.interactionEndTimer) {
                 window.clearTimeout(state.interactionEndTimer);
                 state.interactionEndTimer = null;
@@ -1585,7 +1923,8 @@
             disposeRuntime();
             createRuntime();
             showLoader("Loading...");
-            syncPlaybackUi();
+            markPlaybackUiDirty();
+            flushPlaybackUi();
 
             try {
                 const assetObjectUrl = await loadSpzAsSplatObjectUrl(scene.assetPath, (ratio) => {
@@ -1619,11 +1958,13 @@
                 await wait(AUTOPLAY_START_DELAY_MS);
                 if (token !== state.loadToken) return;
                 state.playing = true;
-                syncPlaybackUi();
+                markPlaybackUiDirty();
+                requestRender();
             } catch (error) {
                 console.error(error);
                 dom.viewerLoaderText.textContent = "Failed to load scene";
                 setLoaderProgress(1);
+                requestRender();
             }
         }
 
@@ -1637,7 +1978,8 @@
             hideLoader();
             disposeRuntime();
             recreateIframe(scene.src);
-            syncPlaybackUi();
+            markPlaybackUiDirty();
+            flushPlaybackUi();
         }
 
         function changeScene(index) {
@@ -1675,12 +2017,24 @@
                 state.frameCursor = 0;
                 applyFrame(0, true);
             }
-            syncPlaybackUi();
+            markPlaybackUiDirty();
+            requestRender();
         }
 
         function renderLoop(now) {
             requestAnimationFrame(renderLoop);
             if (!viewer || !camera || !controls || !renderer) return;
+
+            const shouldRender = state.renderRequested
+                || state.playing
+                || state.userInteracting
+                || state.returningToPath
+                || dom.viewerLoader.classList.contains("visible");
+            if (!shouldRender) {
+                state.lastTick = now;
+                flushPlaybackUi();
+                return;
+            }
 
             const frameIntervalMs = 1000 / TARGET_FPS;
             if (state.lastRenderTime && now - state.lastRenderTime < frameIntervalMs) return;
@@ -1700,12 +2054,14 @@
                 const normalized = Math.min(state.animationTime / state.duration, 1);
                 state.frameCursor = normalized * (state.frames.length - 1);
                 applyFrame(state.frameCursor);
+                markPlaybackUiDirty();
             }
 
             updateSmoothedCamera(deltaSeconds);
-            syncPlaybackUi();
             viewer.update();
             viewer.render();
+            state.renderRequested = false;
+            flushPlaybackUi();
         }
 
         function setupUi() {
@@ -1754,11 +2110,13 @@
                 state.animationTime = progress * state.duration;
                 state.frameCursor = progress * Math.max(state.frames.length - 1, 0);
                 applyFrame(state.frameCursor, true);
-                syncPlaybackUi();
+                markPlaybackUiDirty();
+                requestRender();
             });
             dom.playbackSlider.addEventListener("change", () => {
                 state.draggingSlider = false;
-                syncPlaybackUi();
+                markPlaybackUiDirty();
+                requestRender();
             });
 
             document.addEventListener("keydown", (event) => {
@@ -1782,8 +2140,19 @@
                 } else if (currentScene().type === "spz" && state.frames.length > 1) {
                     state.playing = true;
                 }
+                markPlaybackUiDirty();
+                requestRender();
             });
         }
+
+        window.addEventListener("beforeunload", () => {
+            if (spzWorker) {
+                spzWorker.terminate();
+            }
+            if (spzWorkerUrl) {
+                URL.revokeObjectURL(spzWorkerUrl);
+            }
+        });
 
         setupUi();
         renderLoop(0);
