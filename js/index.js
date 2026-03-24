@@ -367,6 +367,7 @@ const state = {
     userInteracting: false,
     returningToPath: false,
     interactionEndTimer: null,
+    sceneMenuOpen: false,
     playbackUiDirty: true,
     renderRequested: true
 };
@@ -384,6 +385,10 @@ const dom = {
     infoTitle: document.getElementById("info-title"),
     infoDescription: document.getElementById("info-description"),
     creditDisplay: document.getElementById("credit-display"),
+    desktopSceneMenuWrap: document.getElementById("desktop-scene-menu-wrap"),
+    desktopSceneMenu: document.getElementById("desktop-scene-menu"),
+    desktopSceneMenuList: document.getElementById("desktop-scene-menu-list"),
+    desktopSceneMenuToggle: document.getElementById("desktop-scene-menu-toggle"),
     contentButtonsWrapper: document.getElementById("content-buttons-wrapper"),
     prevBtn: document.getElementById("prev-btn"),
     nextBtn: document.getElementById("next-btn"),
@@ -446,6 +451,13 @@ function clamp01(value) {
 
 function markPlaybackUiDirty() {
     state.playbackUiDirty = true;
+}
+
+function setSceneMenuOpen(shouldShow) {
+    state.sceneMenuOpen = shouldShow;
+    dom.desktopSceneMenu.hidden = !shouldShow;
+    dom.desktopSceneMenuToggle.classList.toggle("is-open", shouldShow);
+    dom.desktopSceneMenuToggle.setAttribute("aria-expanded", String(shouldShow));
 }
 
 function requestRender() {
@@ -1167,6 +1179,10 @@ function updateUi() {
     mobileItems.forEach((item, index) => {
         item.classList.toggle("active", index === state.currentIndex);
     });
+    const desktopMenuButtons = dom.desktopSceneMenuList.querySelectorAll(".desktop-scene-menu-button");
+    desktopMenuButtons.forEach((button, index) => {
+        button.classList.toggle("active", index === state.currentIndex);
+    });
     dom.sceneCounter.textContent = `${state.currentIndex + 1} / ${scenes.length}`;
     markPlaybackUiDirty();
 }
@@ -1257,6 +1273,7 @@ function loadIframeScene(scene) {
 function changeScene(index) {
     if (index < 0 || index >= scenes.length) return;
     state.currentIndex = index;
+    setSceneMenuOpen(false);
     updateSceneUrl(index);
     const scene = currentScene();
     dom.infoTitle.textContent = scene.title;
@@ -1343,6 +1360,13 @@ function setupUi() {
         button.onclick = () => changeScene(index);
         dom.contentButtonsWrapper.appendChild(button);
 
+        const menuButton = document.createElement("button");
+        menuButton.className = "desktop-scene-menu-button";
+        menuButton.type = "button";
+        menuButton.textContent = scene.title;
+        menuButton.onclick = () => changeScene(index);
+        dom.desktopSceneMenuList.appendChild(menuButton);
+
         const item = document.createElement("div");
         item.className = "list-item";
         item.textContent = scene.title;
@@ -1358,6 +1382,7 @@ function setupUi() {
     dom.mobilePrevBtn.onclick = () => navigate(-1);
     dom.mobileNextBtn.onclick = () => navigate(1);
     dom.infoToggleBtn.onclick = () => dom.infoBox.classList.toggle("visible");
+    dom.desktopSceneMenuToggle.onclick = () => setSceneMenuOpen(!state.sceneMenuOpen);
     dom.listToggleBtn.onclick = () => dom.listModal.classList.add("visible");
     dom.listModalClose.onclick = () => dom.listModal.classList.remove("visible");
     dom.fullscreenBtn.onclick = () => {
@@ -1397,6 +1422,16 @@ function setupUi() {
             if (document.activeElement) document.activeElement.blur();
             navigate(event.key === "ArrowLeft" ? -1 : 1);
         }
+        if (event.key === "Escape") {
+            setSceneMenuOpen(false);
+            dom.listModal.classList.remove("visible");
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!state.sceneMenuOpen) return;
+        if (dom.desktopSceneMenuWrap?.contains(event.target)) return;
+        setSceneMenuOpen(false);
     });
 
     window.addEventListener("resize", () => {
