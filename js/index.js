@@ -302,8 +302,10 @@ const scenes = [
     {
         title: "Premature Babies in Improvised Care",
         description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
-        type: "iframe",
-        src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+        type: "spz",
+        assetPath: "./ply_spz/baby01.spz",
+        cameraPath: "./ply_spz/cameras/baby01.json",
+        modelRotation: { x: 0, y: 0, z: 0 },
         credit: "© UTokyo & Al Jazeera"
     },
     {
@@ -1028,19 +1030,22 @@ function updateProjection(frame) {
     return Number.isFinite(fov) && fov > 1 && fov < 179 ? fov : camera.fov;
 }
 
-function rotateModelRoot(root) {
+function rotateModelRoot(root, rotation = {}) {
     if (root?.rotation && typeof root.rotation.z === "number") {
-        root.rotation.z = Math.PI;
+        root.rotation.x = typeof rotation.x === "number" ? rotation.x : 0;
+        root.rotation.y = typeof rotation.y === "number" ? rotation.y : 0;
+        root.rotation.z = typeof rotation.z === "number" ? rotation.z : Math.PI;
         root.updateMatrixWorld?.(true);
         return true;
     }
     return false;
 }
 
-function applyModelOrientation(sceneHandle) {
+function applyModelOrientation(sceneHandle, sceneConfig) {
+    const rotation = sceneConfig?.modelRotation ?? {};
     const candidates = [sceneHandle, sceneHandle?.scene, sceneHandle?.splatMesh, viewer?.scene, viewer?.splatMesh];
     for (const candidate of candidates) {
-        if (rotateModelRoot(candidate)) {
+        if (rotateModelRoot(candidate, rotation)) {
             return true;
         }
     }
@@ -1211,7 +1216,7 @@ async function loadSpzScene(scene) {
             onProgress: null
         });
         if (token !== state.loadToken) return;
-        applyModelOrientation(viewer);
+        applyModelOrientation(viewer, scene);
 
         dom.viewerLoaderText.textContent = "Loading camera path...";
         setLoaderProgress(0.95);
