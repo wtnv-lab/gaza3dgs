@@ -137,7 +137,8 @@ body {
 }
 
 #controls,
-#playback-controls {
+#playback-controls,
+#desktop-scene-menu {
     position: absolute;
     z-index: 20;
     display: flex;
@@ -155,6 +156,41 @@ body {
     right: 8px;
     bottom: 8px;
     padding: 10px;
+}
+
+#desktop-scene-menu-wrap {
+    position: absolute;
+    left: 10px;
+    bottom: 78px;
+    z-index: 22;
+}
+
+#desktop-scene-menu {
+    left: 0;
+    bottom: calc(100% + 6px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: max-content;
+    max-width: min(420px, calc(100vw - 28px));
+    max-height: min(34vh, 280px);
+    padding: 8px 8px 7px;
+    background: var(--glass-panel-strong);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+#desktop-scene-menu[hidden] {
+    display: none;
+}
+
+#desktop-scene-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+    padding-right: 2px;
+    max-width: 100%;
 }
 
 #playback-controls {
@@ -183,9 +219,10 @@ body {
 #content-buttons-wrapper {
     flex: 1;
     min-width: 0;
+    display: flex;
+    gap: 8px;
     overflow-x: auto;
     white-space: nowrap;
-    text-align: center;
     scrollbar-width: thin;
     scrollbar-color: rgba(200, 220, 255, 0.38) transparent;
 }
@@ -210,10 +247,12 @@ button,
 
 #controls button,
 #playback-controls button,
+#desktop-scene-menu-toggle,
 #list-toggle-btn,
 #info-toggle-btn,
 #fullscreen-btn,
-#list-modal-close {
+#list-modal-close,
+.desktop-scene-menu-button {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03));
     color: var(--text);
     border: 1px solid var(--border);
@@ -234,6 +273,35 @@ button,
     align-items: center;
 }
 
+#content-buttons-wrapper button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#desktop-scene-menu-toggle {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    height: 28px;
+    padding: 0 10px;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+}
+
+.desktop-scene-menu-button {
+    appearance: none;
+    width: 100%;
+    padding: 7px 8px;
+    text-align: left;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
 #controls button.active {
     background:
         linear-gradient(180deg, rgba(217, 184, 108, 0.38), rgba(217, 184, 108, 0.14)),
@@ -243,10 +311,21 @@ button,
 }
 
 #controls button:hover,
-#playback-controls button:hover {
+#playback-controls button:hover,
+#desktop-scene-menu-toggle:hover,
+.desktop-scene-menu-button:hover,
+#desktop-scene-menu-toggle.is-open {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
     border-color: var(--border-strong);
     transform: translateY(-1px);
+}
+
+.desktop-scene-menu-button.active {
+    background:
+        linear-gradient(180deg, rgba(217, 184, 108, 0.38), rgba(217, 184, 108, 0.14)),
+        rgba(43, 36, 20, 0.82);
+    border-color: rgba(217, 184, 108, 0.72);
+    color: #fff7e7;
 }
 
 #prev-btn,
@@ -475,6 +554,10 @@ button,
 }
 
 @media (max-width: 860px) {
+    #desktop-scene-menu-wrap {
+        display: none;
+    }
+
     #controls {
         display: none;
     }
