@@ -302,8 +302,10 @@ const scenes = [
     {
         title: "Premature Babies in Improvised Care",
         description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
-        type: "iframe",
-        src: "https://lumalabs.ai/embed/af474206-210c-43b7-bcf7-f963d6b04900?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
+        type: "spz",
+        assetPath: "./ply_spz/baby01.spz",
+        cameraPath: "./ply_spz/cameras/baby01.json",
+        modelRotation: { x: 0, y: 0, z: 0 },
         credit: "© UTokyo & Al Jazeera"
     },
     {
@@ -365,6 +367,7 @@ const state = {
     userInteracting: false,
     returningToPath: false,
     interactionEndTimer: null,
+    sceneMenuOpen: false,
     playbackUiDirty: true,
     renderRequested: true
 };
@@ -382,6 +385,10 @@ const dom = {
     infoTitle: document.getElementById("info-title"),
     infoDescription: document.getElementById("info-description"),
     creditDisplay: document.getElementById("credit-display"),
+    desktopSceneMenuWrap: document.getElementById("desktop-scene-menu-wrap"),
+    desktopSceneMenu: document.getElementById("desktop-scene-menu"),
+    desktopSceneMenuList: document.getElementById("desktop-scene-menu-list"),
+    desktopSceneMenuToggle: document.getElementById("desktop-scene-menu-toggle"),
     contentButtonsWrapper: document.getElementById("content-buttons-wrapper"),
     prevBtn: document.getElementById("prev-btn"),
     nextBtn: document.getElementById("next-btn"),
@@ -444,6 +451,13 @@ function clamp01(value) {
 
 function markPlaybackUiDirty() {
     state.playbackUiDirty = true;
+}
+
+function setSceneMenuOpen(shouldShow) {
+    state.sceneMenuOpen = shouldShow;
+    dom.desktopSceneMenu.hidden = !shouldShow;
+    dom.desktopSceneMenuToggle.classList.toggle("is-open", shouldShow);
+    dom.desktopSceneMenuToggle.setAttribute("aria-expanded", String(shouldShow));
 }
 
 function requestRender() {
@@ -1028,19 +1042,22 @@ function updateProjection(frame) {
     return Number.isFinite(fov) && fov > 1 && fov < 179 ? fov : camera.fov;
 }
 
-function rotateModelRoot(root) {
+function rotateModelRoot(root, rotation = {}) {
     if (root?.rotation && typeof root.rotation.z === "number") {
-        root.rotation.z = Math.PI;
+        root.rotation.x = typeof rotation.x === "number" ? rotation.x : 0;
+        root.rotation.y = typeof rotation.y === "number" ? rotation.y : 0;
+        root.rotation.z = typeof rotation.z === "number" ? rotation.z : Math.PI;
         root.updateMatrixWorld?.(true);
         return true;
     }
     return false;
 }
 
-function applyModelOrientation(sceneHandle) {
+function applyModelOrientation(sceneHandle, sceneConfig) {
+    const rotation = sceneConfig?.modelRotation ?? {};
     const candidates = [sceneHandle, sceneHandle?.scene, sceneHandle?.splatMesh, viewer?.scene, viewer?.splatMesh];
     for (const candidate of candidates) {
-        if (rotateModelRoot(candidate)) {
+        if (rotateModelRoot(candidate, rotation)) {
             return true;
         }
     }
@@ -1162,6 +1179,10 @@ function updateUi() {
     mobileItems.forEach((item, index) => {
         item.classList.toggle("active", index === state.currentIndex);
     });
+    const desktopMenuButtons = dom.desktopSceneMenuList.querySelectorAll(".desktop-scene-menu-button");
+    desktopMenuButtons.forEach((button, index) => {
+        button.classList.toggle("active", index === state.currentIndex);
+    });
     dom.sceneCounter.textContent = `${state.currentIndex + 1} / ${scenes.length}`;
     markPlaybackUiDirty();
 }
@@ -1211,7 +1232,7 @@ async function loadSpzScene(scene) {
             onProgress: null
         });
         if (token !== state.loadToken) return;
-        applyModelOrientation(viewer);
+        applyModelOrientation(viewer, scene);
 
         dom.viewerLoaderText.textContent = "Loading camera path...";
         setLoaderProgress(0.95);
@@ -1252,6 +1273,7 @@ function loadIframeScene(scene) {
 function changeScene(index) {
     if (index < 0 || index >= scenes.length) return;
     state.currentIndex = index;
+    setSceneMenuOpen(false);
     updateSceneUrl(index);
     const scene = currentScene();
     dom.infoTitle.textContent = scene.title;
@@ -1338,6 +1360,13 @@ function setupUi() {
         button.onclick = () => changeScene(index);
         dom.contentButtonsWrapper.appendChild(button);
 
+        const menuButton = document.createElement("button");
+        menuButton.className = "desktop-scene-menu-button";
+        menuButton.type = "button";
+        menuButton.textContent = scene.title;
+        menuButton.onclick = () => changeScene(index);
+        dom.desktopSceneMenuList.appendChild(menuButton);
+
         const item = document.createElement("div");
         item.className = "list-item";
         item.textContent = scene.title;
@@ -1353,6 +1382,7 @@ function setupUi() {
     dom.mobilePrevBtn.onclick = () => navigate(-1);
     dom.mobileNextBtn.onclick = () => navigate(1);
     dom.infoToggleBtn.onclick = () => dom.infoBox.classList.toggle("visible");
+    dom.desktopSceneMenuToggle.onclick = () => setSceneMenuOpen(!state.sceneMenuOpen);
     dom.listToggleBtn.onclick = () => dom.listModal.classList.add("visible");
     dom.listModalClose.onclick = () => dom.listModal.classList.remove("visible");
     dom.fullscreenBtn.onclick = () => {
@@ -1392,6 +1422,16 @@ function setupUi() {
             if (document.activeElement) document.activeElement.blur();
             navigate(event.key === "ArrowLeft" ? -1 : 1);
         }
+        if (event.key === "Escape") {
+            setSceneMenuOpen(false);
+            dom.listModal.classList.remove("visible");
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!state.sceneMenuOpen) return;
+        if (dom.desktopSceneMenuWrap?.contains(event.target)) return;
+        setSceneMenuOpen(false);
     });
 
     window.addEventListener("resize", () => {
