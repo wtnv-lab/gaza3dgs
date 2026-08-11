@@ -23,6 +23,11 @@
     <meta name="twitter:description"
         content="An interactive 3D archive of scenes from Gaza, created from Al Jazeera and UNRWA footage to preserve and convey the situation on the ground.">
     <meta name="twitter:image" content="https://gaza.archiving.jp/sns.jpg">
+    <script>
+        if (new URLSearchParams(window.location.search).get("lg") === "1") {
+            document.documentElement.classList.add("large-display-mode");
+        }
+    </script>
     <script type="importmap">
     {
         "imports": {
@@ -33,7 +38,7 @@
         }
     }
     </script>
-    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/index.css?v=20260812-lg1">
 </head>
 
 <body>
@@ -144,7 +149,7 @@
         <div id="list-modal-content"></div>
     </div>
 
-    <script type="module" src="./js/index.js"></script>
+    <script type="module" src="./js/index.js?v=20260812-lg1"></script>
 </body>
 
 </html>
