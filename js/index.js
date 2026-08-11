@@ -4,6 +4,9 @@ import * as GaussianSplats3D from "@mkkellogg/gaussian-splats-3d";
 import { gunzipSync } from "fflate";
 
 const APP_ROOT_URL = new URL("../", import.meta.url);
+const QR_CODE_MODULE_URL = "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
+const largeDisplayMode = new URLSearchParams(window.location.search).get("lg") === "1";
+document.documentElement.classList.toggle("large-display-mode", largeDisplayMode);
 
 const LOOP_DURATION_SECONDS = 26;
 const FOV_MULTIPLIER = 0.96;
@@ -270,81 +273,113 @@ const SPZ_WORKER_SOURCE = `
 const scenes = [
     {
         title: "People in Al Shifa Courtyard",
+        titleJa: "アル・シファ病院中庭の人びと",
         description: "This 3D model shows displaced Palestinians receiving care in the courtyard of Al Shifa Hospital. Following repeated Israeli military raids, the hospital's main wards were severely damaged or destroyed, forcing patients and medical staff to use outdoor spaces for treatment.",
+        descriptionJa: "この3Dモデルは、アル・シファ病院の中庭で治療を受ける避難民のパレスチナ人たちを示したものである。イスラエル軍による度重なる襲撃の後、病院の主要病棟は深刻な損傷を受け、あるいは破壊され、患者と医療スタッフは屋外空間を治療に使わざるを得なくなった。",
         type: "spz",
         assetPath: "./ply_spz/people.spz",
         cameraPath: "./ply_spz/cameras/people.json",
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Al Shifa Hospital Courtyard",
+        titleJa: "アル・シファ病院の中庭",
         description: "A view of the parking area within the Al Shifa Hospital courtyard, showing destroyed vehicles. The extensive damage to the complex illustrates the intensity of the attacks it sustained, which ultimately left Gaza's largest hospital non-functional.",
+        descriptionJa: "アル・シファ病院の中庭にある駐車区域を捉えたもので、破壊された車両が見える。施設全体に及ぶ甚大な被害は、ガザ最大の病院を最終的に機能停止へ追い込んだ攻撃の激しさを物語っている。",
         type: "spz",
         assetPath: "./ply_spz/courtyard.spz",
         cameraPath: "./ply_spz/cameras/courtyard.json",
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Destroyed Entrance of Al Shifa Hospital",
+        titleJa: "破壊されたアル・シファ病院の入口",
         description: "This model captures the devastated main entrance and interior of Al Shifa Hospital. The scene reflects the aftermath of intense fighting and bombardment that left the medical facility in ruins.",
+        descriptionJa: "このモデルは、アル・シファ病院の破壊された正面入口と内部を記録したものである。医療施設を廃墟に変えた激しい戦闘と爆撃の後の状況を示している。",
         type: "spz",
         assetPath: "./ply_spz/entrance.spz",
         cameraPath: "./ply_spz/cameras/entrance.json",
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Newborns Huddled for Care at Al Shifa",
+        titleJa: "ケアのため身を寄せ合うアル・シファの新生児たち",
         description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+        descriptionJa: "このモデルは、アル・シファ病院で複数の未熟児が保温とケアのために一つのベッドを共有している様子を示したものである。軍事作戦による停電と損傷で専用の保育器が使えなくなり、医療スタッフは命をつなぐために応急的な対応を迫られた。",
         type: "iframe",
         src: "https://lumalabs.ai/embed/433cd331-1f50-4077-8d77-34ef4173bd9e?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Premature Babies in Improvised Care",
+        titleJa: "応急的なケアを受ける未熟児たち",
         description: "This model shows several premature babies sharing a single bed for warmth and care at Al Shifa Hospital. Their specialized incubators became unusable due to power cuts and damage from military operations, forcing medical staff to improvise to keep them alive.",
+        descriptionJa: "このモデルは、アル・シファ病院で複数の未熟児が保温とケアのために一つのベッドを共有している様子を示したものである。軍事作戦による停電と損傷で専用の保育器が使えなくなり、医療スタッフは命をつなぐために応急的な対応を迫られた。",
         type: "spz",
         assetPath: "./ply_spz/baby01.spz",
         cameraPath: "./ply_spz/cameras/baby01.json",
         modelRotation: { x: 0, y: 0, z: 0 },
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Abandoned Nursery at Al Shifa Hospital",
+        titleJa: "人のいなくなったアル・シファ病院の新生児室",
         description: "The neonatal intensive care unit (NICU) at Al Shifa Hospital, now empty and non-functional. This room, once filled with life-saving equipment, stands as a stark testament to the collapse of the healthcare system in Gaza's largest hospital.",
+        descriptionJa: "アル・シファ病院の新生児集中治療室（NICU）は、現在は空になり機能していない。かつて救命機器で満たされていたこの部屋は、ガザ最大の病院における医療体制の崩壊を鋭く物語るものである。",
         type: "iframe",
         src: "https://lumalabs.ai/embed/8408d73d-04dc-4f6d-92f5-5efd2b3af5d0?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=bottom-right&cinematicVideo=undefined&showMenu=false",
-        credit: "© UTokyo & Al Jazeera"
+        credit: "© UTokyo",
+        partner: "Al Jazeera"
     },
     {
         title: "Destroyed UN Vehicle in Bureij Camp",
+        titleJa: "ブレイジ難民キャンプの破壊された国連車両",
         description: "A destroyed United Nations (UN) vehicle in the Bureij refugee camp. The original footage from UNRWA shows the aftermath of an attack on an aid convoy, highlighting the perilous conditions for humanitarian workers in the Gaza Strip.",
+        descriptionJa: "ブレイジ難民キャンプで破壊された国連（UN）車両である。UNRWAの元映像は支援車列への攻撃後の状況を示しており、ガザ地区で人道支援に携わる人々が置かれた危険な環境を浮き彫りにしている。",
         type: "spz",
         assetPath: "./ply_spz/un.spz",
         cameraPath: "./ply_spz/cameras/un.json",
-        credit: '© UTokyo & <a href="https://www.instagram.com/p/C6b8L0pI-Sv/" target="_blank">UNRWA</a>'
+        credit: "© UTokyo",
+        partner: "UNRWA",
+        partnerHref: "https://www.instagram.com/p/C6b8L0pI-Sv/"
     },
     {
         title: "Destroyed Cityscape in Khan Yunis",
+        titleJa: "破壊されたハンユニスの街並み",
         description: "Widespread destruction in the city of Khan Yunis. This scene, captured by UNRWA, documents the extensive damage to residential buildings and urban infrastructure following prolonged Israeli military operations in the southern Gaza Strip.",
+        descriptionJa: "ハンユニス市に広がる破壊の様子である。UNRWAが記録したこの場面は、ガザ地区南部で続いたイスラエル軍の作戦の後、住宅や都市インフラに及んだ甚大な被害を伝えている。",
         type: "spz",
         assetPath: "./ply_spz/khan_yunis.spz",
         cameraPath: "./ply_spz/cameras/khan_yunis.json",
-        credit: "© UTokyo & UNRWA"
+        credit: "© UTokyo",
+        partner: "UNRWA"
     },
     {
         title: "Rubble and Ruins in Khan Yunis",
+        titleJa: "ハンユニスの瓦礫と廃墟",
         description: "Another view of the devastation in Khan Yunis. The sheer scale of the destruction has made large parts of the city uninhabitable, creating a massive humanitarian and reconstruction challenge for the future.",
+        descriptionJa: "ハンユニスの荒廃を別の視点から捉えたものである。破壊の規模は非常に大きく、市内の広い地域が居住不能となり、将来に向けた人道上・復興上の大きな課題を生み出している。",
         type: "spz",
         assetPath: "./ply_spz/khan_yunis2.spz",
         cameraPath: "./ply_spz/cameras/khan_yunis2.json",
-        credit: "© UTokyo & UNRWA"
+        credit: "© UTokyo",
+        partner: "UNRWA"
     },
     {
         title: "Japan-Funded Overpass in Khan Yunis",
+        titleJa: "日本の支援で建設されたハンユニスの高架橋",
         description: "An overpass in Khan Yunis, built with development aid from the government of Japan. A sign on the bridge, written in Japanese, expresses gratitude for the support. This infrastructure was intended to improve local transportation and stood as a symbol of friendship before the recent conflict.",
+        descriptionJa: "日本政府の開発支援で建設された、ハンユニスの高架橋である。橋に掲げられた日本語の標識には支援への感謝が記されている。このインフラは地域交通の改善を目的とし、近年の紛争以前には友好の象徴として存在していた。",
         type: "iframe",
         src: "https://lumalabs.ai/embed/6e0ba4f5-6a08-42ae-b048-9ddd9f801c98?mode=sparkles&background=%23ffffff&color=%23000000&showTitle=false&loadBg=true&logoPosition=bottom-left&infoPosition=top-left&cinematicVideo=undefined&showMenu=false",
-        credit: '© UTokyo & <a href="https://www.unrwa.org/" target="_blank">UNRWA</a>'
+        credit: "© UTokyo",
+        partner: "UNRWA",
+        partnerHref: "https://www.unrwa.org/"
     }
 ];
 
@@ -385,6 +420,14 @@ const dom = {
     infoTitle: document.getElementById("info-title"),
     infoDescription: document.getElementById("info-description"),
     creditDisplay: document.getElementById("credit-display"),
+    largeSceneTitleJa: document.getElementById("large-scene-title-ja"),
+    largeSceneDescriptionJa: document.getElementById("large-scene-description-ja"),
+    largeSceneTitleEn: document.getElementById("large-scene-title-en"),
+    largeSceneDescriptionEn: document.getElementById("large-scene-description-en"),
+    largeDisplayPartnerJa: document.getElementById("large-display-credit-partner-ja"),
+    largeDisplayPartnerEn: document.getElementById("large-display-credit-partner-en"),
+    largeDisplayQr: document.getElementById("large-display-qr"),
+    largeDisplayQrImage: document.getElementById("large-display-qr-image"),
     desktopSceneMenuWrap: document.getElementById("desktop-scene-menu-wrap"),
     desktopSceneMenu: document.getElementById("desktop-scene-menu"),
     desktopSceneMenuList: document.getElementById("desktop-scene-menu-list"),
@@ -410,6 +453,7 @@ let renderer = null;
 let camera = null;
 let controls = null;
 let viewer = null;
+let qrCodeModulePromise = null;
 const arrayBufferCache = new Map();
 const splatObjectUrlCache = new Map();
 const frameCache = new Map();
@@ -425,6 +469,16 @@ const spzWorkerPending = new Map();
 
 function currentScene() {
     return scenes[state.currentIndex];
+}
+
+function sceneCreditHtml(scene) {
+    if (!scene.partner) {
+        return scene.credit;
+    }
+    const partner = scene.partnerHref
+        ? `<a href="${scene.partnerHref}" target="_blank" rel="noopener noreferrer">${scene.partner}</a>`
+        : scene.partner;
+    return `${scene.credit}<br>Cooperation: ${partner}`;
 }
 
 function resolveAppUrl(path) {
@@ -443,6 +497,46 @@ function updateSceneUrl(index) {
     const url = new URL(window.location.href);
     url.searchParams.set("scene", String(index + 1));
     window.history.replaceState({ scene: index + 1 }, "", url);
+}
+
+function currentSmartphoneUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("scene", String(state.currentIndex + 1));
+    url.searchParams.delete("lg");
+    return url;
+}
+
+async function getQrCodeModule() {
+    if (!qrCodeModulePromise) {
+        qrCodeModulePromise = import(QR_CODE_MODULE_URL);
+    }
+    return qrCodeModulePromise;
+}
+
+async function updateLargeDisplayQr() {
+    if (!largeDisplayMode || !dom.largeDisplayQr || !dom.largeDisplayQrImage || !currentScene()) {
+        return;
+    }
+
+    const url = currentSmartphoneUrl();
+    dom.largeDisplayQr.href = url.href;
+    try {
+        const QRCode = (await getQrCodeModule()).default;
+        const imageUrl = await QRCode.toDataURL(url.href, {
+            width: 200,
+            margin: 2,
+            errorCorrectionLevel: "M",
+            color: {
+                dark: "#0f1418",
+                light: "#ffffff"
+            }
+        });
+        if (dom.largeDisplayQr.href === url.href) {
+            dom.largeDisplayQrImage.src = imageUrl;
+        }
+    } catch (error) {
+        console.error("Failed to generate QR code", error);
+    }
 }
 
 function clamp01(value) {
@@ -1278,7 +1372,14 @@ function changeScene(index) {
     const scene = currentScene();
     dom.infoTitle.textContent = scene.title;
     dom.infoDescription.textContent = scene.description;
-    dom.creditDisplay.innerHTML = scene.credit;
+    dom.creditDisplay.innerHTML = sceneCreditHtml(scene);
+    dom.largeSceneTitleJa.textContent = scene.titleJa || scene.title;
+    dom.largeSceneDescriptionJa.textContent = scene.descriptionJa || scene.description;
+    dom.largeSceneTitleEn.textContent = scene.title;
+    dom.largeSceneDescriptionEn.textContent = scene.description;
+    dom.largeDisplayPartnerJa.textContent = scene.partner ? `協力機関: ${scene.partner}` : "";
+    dom.largeDisplayPartnerEn.textContent = scene.partner ? `Cooperation: ${scene.partner}` : "";
+    updateLargeDisplayQr();
     if (scene.type === "spz") {
         loadSpzScene(scene);
     } else {
