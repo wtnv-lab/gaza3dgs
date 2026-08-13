@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>途絶えた通航 | 大画面表示</title>
+    <meta name="description" content="2026年2月28日から3月1日にかけてのホルムズ海峡における24時間の船舶通行状況を記録したAISキャプチャムービー。">
+    <style>
+        :root {
+            --text: #edf2f7;
+            --muted: rgba(237, 242, 247, 0.72);
+            --glass-panel-strong:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05)),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)),
+                rgba(10, 15, 20, 0.64);
+            --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            --glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.30);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            color: var(--text);
+            font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .large-display-shell {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            background:
+                radial-gradient(circle at top left, rgba(217, 184, 108, 0.08), transparent 24%),
+                radial-gradient(circle at top right, rgba(97, 132, 164, 0.08), transparent 28%),
+                #000;
+        }
+
+        .video-stage {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        .video-frame {
+            width: 100vw;
+            height: 56.25vw;
+            max-width: 177.7778vh;
+            max-height: 100dvh;
+            aspect-ratio: 16 / 9;
+        }
+
+        .video-frame iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .large-display-credit {
+            position: absolute;
+            bottom: 32px;
+            z-index: 22;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            color: var(--text);
+            pointer-events: none;
+            text-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.85),
+                0 4px 18px rgba(0, 0, 0, 0.5);
+        }
+
+        .large-display-credit-ja {
+            left: 32px;
+        }
+
+        .large-display-credit-en {
+            right: 32px;
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .large-display-credit-title {
+            font-size: clamp(26px, 2vw, 39px);
+            line-height: 1.1;
+            font-weight: 600;
+        }
+
+        .large-display-credit-subtitle,
+        .large-display-credit-partner {
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(18px, 1.45vw, 27px);
+            line-height: 1.2;
+        }
+
+        .large-display-credit-partner {
+            color: rgba(237, 242, 247, 0.86);
+        }
+
+        .large-display-description {
+            position: absolute;
+            top: 50%;
+            z-index: 20;
+            display: block;
+            width: min(680px, calc(50vw - 48px));
+            max-height: calc(100dvh - 260px);
+            padding: clamp(28px, 2.6vw, 52px);
+            overflow: hidden;
+            transform: translateY(-50%);
+            background: var(--glass-panel-strong);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: var(--glass-highlight), var(--glass-shadow);
+            pointer-events: none;
+        }
+
+        .large-display-description-ja {
+            left: 32px;
+        }
+
+        .large-display-description-en {
+            right: 32px;
+        }
+
+        .large-display-description h1 {
+            margin: 0 0 clamp(18px, 1.7vw, 32px);
+            font-size: clamp(28px, 2.25vw, 45px);
+            line-height: 1.35;
+        }
+
+        .large-display-description p {
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(19px, 1.55vw, 32px);
+            line-height: 1.65;
+        }
+
+        .large-display-description-en p {
+            text-align: justify;
+            text-justify: inter-word;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="large-display-shell">
+        <div class="video-stage" aria-label="AIS capture movie">
+            <div class="video-frame" id="youtube-player"></div>
+        </div>
+
+        <aside class="large-display-description large-display-description-ja" lang="ja" aria-live="polite">
+            <h1 id="title-ja"></h1>
+            <p id="description-ja"></p>
+        </aside>
+
+        <aside class="large-display-description large-display-description-en" lang="en" aria-live="polite">
+            <h1 id="title-en"></h1>
+            <p id="description-en"></p>
+        </aside>
+
+        <div class="large-display-credit large-display-credit-ja" lang="ja">
+            <div class="large-display-credit-title" id="credit-title-ja"></div>
+            <p class="large-display-credit-subtitle" id="data-ja"></p>
+            <p class="large-display-credit-partner" id="creator-ja"></p>
+        </div>
+
+        <div class="large-display-credit large-display-credit-en" lang="en">
+            <div class="large-display-credit-title" id="credit-title-en"></div>
+            <p class="large-display-credit-subtitle" id="data-en"></p>
+            <p class="large-display-credit-partner" id="creator-en"></p>
+        </div>
+    </main>
+
+    <script>
+        const CONTENTS = {
+            20260228: {
+                youtubeId: "f4q7ZpWtqYs",
+                playbackRate: 2,
+                titleJa: "途絶えた通航",
+                titleEn: "Interrupted Passage",
+                descriptionJa: "2026年2月28日〜3月1日，ホルムズ海峡における24時間の船舶の通行状況。イランへの攻撃開始以降，通行量が激減した。赤色の船種がタンカー，緑色が貨物船。",
+                descriptionEn: "Vessel traffic over 24 hours in the Strait of Hormuz from February 28 to March 1, 2026. Since the start of attacks on Iran, traffic has dropped sharply. Red vessels are tankers; green vessels are cargo ships.",
+                dataJa: "データ：MarineTraffic",
+                dataEn: "Data: MarineTraffic",
+                creatorJa: "作成：東京大学大学院 渡邉英徳研究室",
+                creatorEn: "Created by Hidenori Watanave Lab, The University of Tokyo"
+            },
+            20260314: {
+                youtubeId: "xoCLPKnT7kw",
+                playbackRate: 2,
+                titleJa: "乱される信号",
+                titleEn: "Disrupted Signals",
+                descriptionJa: "2026年3月14日〜16日，ホルムズ海峡付近におけるAIS（船舶自動識別装置）データのタイムラプス。GPS情報の撹乱により，船舶群が不自然な場所に集結・幾何学的な直線上に並んで移動するなど，異常な軌跡を描いていることが確認できる。",
+                descriptionEn: "A time-lapse of AIS (Automatic Identification System) data near the Strait of Hormuz from March 14 to 16, 2026. GPS interference reveals abnormal tracks, including groups of vessels gathering in unnatural locations and moving in geometric straight lines.",
+                dataJa: "データ：MarineTraffic",
+                dataEn: "Data: MarineTraffic",
+                creatorJa: "作成：東京大学大学院 渡邉英徳研究室",
+                creatorEn: "Created by Hidenori Watanave Lab, The University of Tokyo"
+            },
+            20260428: {
+                youtubeId: "Hjim3oHcP3k",
+                playbackRate: 1,
+                titleJa: "「出光丸」の海峡通過",
+                titleEn: "Idemitsu Maru Passes Through the Strait",
+                descriptionJa: "2026年4月28日，ペルシャ湾内に停泊していた原油タンカー「出光丸」は，ホルムズ海峡を通過してオマーン湾に脱出。開戦後，海峡を通過した初の日本タンカーとなった。",
+                descriptionEn: "On April 28, 2026, the crude oil tanker Idemitsu Maru, which had been anchored in the Persian Gulf, passed through the Strait of Hormuz and escaped into the Gulf of Oman. It became the first Japanese tanker to pass through the strait after the outbreak of war.",
+                dataJa: "データ：MarineTraffic",
+                dataEn: "Data: MarineTraffic",
+                creatorJa: "作成：東京大学大学院 渡邉英徳研究室",
+                creatorEn: "Created by Hidenori Watanave Lab, The University of Tokyo"
+            }
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const contentId = params.get("content") || "20260228";
+        const content = CONTENTS[contentId] || CONTENTS["20260228"];
+
+        document.title = `${content.titleJa} | 大画面表示`;
+        document.getElementById("title-ja").textContent = content.titleJa;
+        document.getElementById("title-en").textContent = content.titleEn;
+        document.getElementById("description-ja").textContent = content.descriptionJa;
+        document.getElementById("description-en").textContent = content.descriptionEn;
+        document.getElementById("credit-title-ja").textContent = content.titleJa;
+        document.getElementById("credit-title-en").textContent = content.titleEn;
+        document.getElementById("data-ja").textContent = content.dataJa;
+        document.getElementById("data-en").textContent = content.dataEn;
+        document.getElementById("creator-ja").textContent = content.creatorJa;
+        document.getElementById("creator-en").textContent = content.creatorEn;
+
+        let player;
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player("youtube-player", {
+                width: "100%",
+                height: "100%",
+                videoId: content.youtubeId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0,
+                    disablekb: 1,
+                    enablejsapi: 1,
+                    fs: 0,
+                    iv_load_policy: 3,
+                    loop: 1,
+                    modestbranding: 1,
+                    mute: 1,
+                    playsinline: 1,
+                    playlist: content.youtubeId,
+                    rel: 0
+                },
+                events: {
+                    onReady: (event) => {
+                        event.target.mute();
+                        event.target.setPlaybackRate(content.playbackRate || 1);
+                        event.target.playVideo();
+                    },
+                    onStateChange: (event) => {
+                        if (event.data === YT.PlayerState.PLAYING) {
+                            event.target.setPlaybackRate(content.playbackRate || 1);
+                        }
+                    }
+                }
+            });
+        }
+
+        const api = document.createElement("script");
+        api.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(api);
+    </script>
+</body>
+
+</html>
